@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPlatform 관리자</title>
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+    <!-- 사이드바 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>EduPlatform</h2>
+            <span class="admin-badge">관리자</span>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">📊</span>대시보드
+                </a></li>
+                <li><a href="#courses" class="nav-item" data-section="courses">
+                    <span class="nav-icon">📚</span>강좌 관리
+                </a></li>
+                <li><a href="#users" class="nav-item" data-section="users">
+                    <span class="nav-icon">👥</span>사용자 관리
+                </a></li>
+                <li><a href="#enrollments" class="nav-item" data-section="enrollments">
+                    <span class="nav-icon">🎓</span>수강신청 관리
+                </a></li>
+                <li><a href="#settings" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>페이지 설정
+                </a></li>
+                <li><a href="#analytics" class="nav-item" data-section="analytics">
+                    <span class="nav-icon">📈</span>통계 분석
+                </a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="btn btn-outline" onclick="goToMainSite()">메인 사이트</button>
+            <button class="btn btn-secondary" onclick="logout()">로그아웃</button>
+        </div>
+    </aside>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="main-content">
+        <!-- 헤더 -->
+        <header class="header">
+            <div class="header-left">
+                <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+                <h1 id="page-title">대시보드</h1>
+            </div>
+            <div class="header-right">
+                <div class="admin-info">
+                    <span>관리자님 환영합니다</span>
+                    <div class="admin-avatar">👤</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 대시보드 섹션 -->
+        <section id="dashboard" class="content-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-content">
+                        <h3>총 강좌</h3>
+                        <div class="stat-number" id="total-courses-stat">0</div>
+                        <div class="stat-change">+2 이번 주</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <h3>등록 사용자</h3>
+                        <div class="stat-number" id="total-users-stat">0</div>
+                        <div class="stat-change">+15 이번 주</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎓</div>
+                    <div class="stat-content">
+                        <h3>수강신청</h3>
+                        <div class="stat-number" id="total-enrollments-stat">0</div>
+                        <div class="stat-change">+8 이번 주</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <h3>총 수익</h3>
+                        <div class="stat-number">₩2,450,000</div>
+                        <div class="stat-change">+12% 이번 달</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>최근 수강신청</h3>
+                    <div class="recent-enrollments" id="recent-enrollments">
+                        <!-- 최근 수강신청 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>인기 강좌</h3>
+                    <div class="popular-courses" id="popular-courses">
+                        <!-- 인기 강좌 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 강좌 관리 섹션 -->
+        <section id="courses" class="content-section">
+            <div class="section-header">
+                <h2>강좌 관리</h2>
+                <button class="btn btn-primary" onclick="showAddCourseModal()">새 강좌 추가</button>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="course-search" placeholder="강좌 검색..." class="search-input">
+                <select id="category-filter" class="filter-select">
+                    <option value="">모든 카테고리</option>
+                    <option value="programming">프로그래밍</option>
+                    <option value="design">디자인</option>
+                    <option value="business">비즈니스</option>
+                    <option value="language">언어</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>강좌명</th>
+                            <th>카테고리</th>
+                            <th>강사</th>
+                            <th>가격</th>
+                            <th>수강생</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="courses-table-body">
+                        <!-- 강좌 목록이 여기에 표시됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 사용자 관리 섹션 -->
+        <section id="users" class="content-section">
+            <div class="section-header">
+                <h2>사용자 관리</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="exportUsers()">사용자 목록 내보내기</button>
+                </div>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="user-search" placeholder="사용자 검색..." class="search-input">
+                <select id="user-status-filter" class="filter-select">
+                    <option value="">모든 상태</option>
+                    <option value="active">활성</option>
+                    <option value="inactive">비활성</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>이메일</th>
+                            <th>전화번호</th>
+                            <th>가입일</th>
+                            <th>수강 강좌</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <!-- 사용자 목록이 여기에 표시됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 수강신청 관리 섹션 -->
+        <section id="enrollments" class="content-section">
+            <div class="section-header">
+                <h2>수강신청 관리</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="exportEnrollments()">수강신청 목록 내보내기</button>
+                </div>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="enrollment-search" placeholder="수강신청 검색..." class="search-input">
+                <select id="enrollment-status-filter" class="filter-select">
+                    <option value="">모든 상태</option>
+                    <option value="enrolled">수강중</option>
+                    <option value="completed">완료</option>
+                    <option value="cancelled">취소</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>학생명</th>
+                            <th>강좌명</th>
+                            <th>신청일</th>
+                            <th>결제방법</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="enrollments-table-body">
+                        <!-- 수강신청 목록이 여기에 표시됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 페이지 설정 섹션 -->
+        <section id="settings" class="content-section">
+            <div class="section-header">
+                <h2>페이지 설정</h2>
+                <button class="btn btn-primary" onclick="saveSettings()">설정 저장</button>
+            </div>
+
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <h3>사이트 정보</h3>
+                    <form class="settings-form" id="site-settings">
+                        <div class="form-group">
+                            <label>사이트 제목</label>
+                            <input type="text" id="site-title" value="EduPlatform">
+                        </div>
+                        <div class="form-group">
+                            <label>사이트 설명</label>
+                            <textarea id="site-description" rows="3">최고 품질의 온라인 교육을 제공합니다.</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>연락처 이메일</label>
+                            <input type="email" id="contact-email" value="info@eduplatform.com">
+                        </div>
+                        <div class="form-group">
+                            <label>연락처 전화번호</label>
+                            <input type="tel" id="contact-phone" value="02-1234-5678">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <h3>홈페이지 히어로 섹션</h3>
+                    <form class="settings-form" id="hero-settings">
+                        <div class="form-group">
+                            <label>메인 제목</label>
+                            <input type="text" id="hero-title" value="온라인으로 배우는 새로운 경험">
+                        </div>
+                        <div class="form-group">
+                            <label>부제목</label>
+                            <input type="text" id="hero-subtitle" value="전문 강사진과 함께하는 체계적인 온라인 교육 플랫폼">
+                        </div>
+                        <div class="form-group">
+                            <label>버튼 텍스트</label>
+                            <input type="text" id="hero-button" value="강좌 둘러보기">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <h3>소셜 미디어</h3>
+                    <form class="settings-form" id="social-settings">
+                        <div class="form-group">
+                            <label>Facebook URL</label>
+                            <input type="url" id="facebook-url" placeholder="https://facebook.com/eduplatform">
+                        </div>
+                        <div class="form-group">
+                            <label>Instagram URL</label>
+                            <input type="url" id="instagram-url" placeholder="https://instagram.com/eduplatform">
+                        </div>
+                        <div class="form-group">
+                            <label>YouTube URL</label>
+                            <input type="url" id="youtube-url" placeholder="https://youtube.com/eduplatform">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <h3>이메일 설정</h3>
+                    <form class="settings-form" id="email-settings">
+                        <div class="form-group">
+                            <label>SMTP 서버</label>
+                            <input type="text" id="smtp-server" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label>SMTP 포트</label>
+                            <input type="number" id="smtp-port" placeholder="587">
+                        </div>
+                        <div class="form-group">
+                            <label>발신자 이메일</label>
+                            <input type="email" id="sender-email" placeholder="noreply@eduplatform.com">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 통계 분석 섹션 -->
+        <section id="analytics" class="content-section">
+            <div class="section-header">
+                <h2>통계 분석</h2>
+                <div class="header-actions">
+                    <select class="filter-select">
+                        <option value="week">최근 1주일</option>
+                        <option value="month">최근 1개월</option>
+                        <option value="quarter">최근 3개월</option>
+                        <option value="year">최근 1년</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <h3>월별 수강신청 현황</h3>
+                    <div class="chart-placeholder">
+                        <p>📊 차트 영역</p>
+                        <p>실제 구현 시 Chart.js 등의 라이브러리 사용</p>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h3>카테고리별 인기도</h3>
+                    <div class="category-stats">
+                        <div class="category-stat">
+                            <span>프로그래밍</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 85%"></div>
+                            </div>
+                            <span>85%</span>
+                        </div>
+                        <div class="category-stat">
+                            <span>디자인</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 70%"></div>
+                            </div>
+                            <span>70%</span>
+                        </div>
+                        <div class="category-stat">
+                            <span>비즈니스</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 60%"></div>
+                            </div>
+                            <span>60%</span>
+                        </div>
+                        <div class="category-stat">
+                            <span>언어</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 75%"></div>
+                            </div>
+                            <span>75%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 강좌 추가/편집 모달 -->
+    <div id="course-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="course-modal-title">새 강좌 추가</h2>
+                <span class="close" onclick="closeCourseModal()">&times;</span>
+            </div>
+            <form class="course-form" id="course-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>강좌명</label>
+                        <input type="text" id="course-title-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>카테고리</label>
+                        <select id="course-category-input" required>
+                            <option value="">카테고리 선택</option>
+                            <option value="programming">프로그래밍</option>
+                            <option value="design">디자인</option>
+                            <option value="business">비즈니스</option>
+                            <option value="language">언어</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>강사명</label>
+                        <input type="text" id="course-instructor-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>가격</label>
+                        <input type="text" id="course-price-input" placeholder="₩150,000" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>수강 기간</label>
+                        <input type="text" id="course-duration-input" placeholder="8주" required>
+                    </div>
+                    <div class="form-group">
+                        <label>난이도</label>
+                        <select id="course-level-input" required>
+                            <option value="">난이도 선택</option>
+                            <option value="초급">초급</option>
+                            <option value="중급">중급</option>
+                            <option value="고급">고급</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>강좌 설명</label>
+                    <textarea id="course-description-input" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>커리큘럼 (한 줄에 하나씩 입력)</label>
+                    <textarea id="course-curriculum-input" rows="6" placeholder="JavaScript 기본 문법&#10;DOM 조작 및 이벤트 처리&#10;비동기 프로그래밍" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCourseModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>처리 중...</p>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
