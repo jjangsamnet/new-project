@@ -1047,3 +1047,204 @@ body {
 .p-20 {
     padding: 20px;
 }
+
+/* 차시 관리 스타일 */
+.lessons-management-section {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    margin-top: 10px;
+}
+
+.lessons-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.lessons-header h4 {
+    color: #333;
+    font-size: 18px;
+    margin: 0;
+}
+
+.lessons-list {
+    min-height: 100px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.lesson-item {
+    background-color: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: all 0.3s ease;
+}
+
+.lesson-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+}
+
+.lesson-item:last-child {
+    margin-bottom: 0;
+}
+
+.lesson-info {
+    flex: 1;
+}
+
+.lesson-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.lesson-header h4 {
+    color: #333;
+    font-size: 16px;
+    margin: 0;
+}
+
+.lesson-description {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.lesson-meta {
+    font-size: 12px;
+    color: #999;
+}
+
+.lesson-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* 차시 모달 스타일 */
+.lesson-form {
+    padding: 30px;
+}
+
+.lesson-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.lesson-form .form-group:nth-child(1),
+.lesson-form .form-group:nth-child(3) {
+    grid-column: span 2;
+}
+
+/* 차시 비디오 업로드 스타일 */
+.lesson-video-upload-section {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    margin-top: 10px;
+}
+
+.lesson-video-upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.lesson-video-upload-area:hover,
+.lesson-video-upload-area.drag-over {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+}
+
+.lesson-video-preview {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.lesson-video-info {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.lesson-video-info p {
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+.lesson-video-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.lesson-video-url-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.lesson-video-url-section .form-group label {
+    font-size: 14px;
+    color: #666;
+}
+
+.lesson-video-url-section input {
+    margin-bottom: 5px;
+}
+
+.lesson-video-url-section small {
+    color: #999;
+    font-size: 12px;
+}
+
+/* 반응형 디자인 - 차시 관리 */
+@media (max-width: 768px) {
+    .lessons-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .lesson-item {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+
+    .lesson-actions {
+        justify-content: flex-end;
+    }
+
+    .lesson-form .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .lesson-form .form-group:nth-child(1),
+    .lesson-form .form-group:nth-child(3) {
+        grid-column: span 1;
+    }
+}

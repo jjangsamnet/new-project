@@ -7,6 +7,7 @@ class AdminSystem {
         this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
         this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
         this.currentEditingCourse = null;
+        this.currentEditingLesson = null;
         this.isAuthenticated = false;
 
         // 관리자 계정 정보
@@ -85,6 +86,7 @@ class AdminSystem {
     bindDashboardEvents() {
         this.bindEvents();
         this.bindVideoUploadEvents();
+        this.bindLessonEvents();
     }
 
     bindVideoUploadEvents() {
@@ -166,6 +168,92 @@ class AdminSystem {
 
         // 현재 편집 중인 강좌에 비디오 정보 저장
         this.currentVideoData = {
+            name: file.name,
+            size: file.size,
+            data: videoData,
+            type: 'file'
+        };
+    }
+
+    bindLessonEvents() {
+        const lessonVideoUploadArea = document.getElementById('lesson-video-upload-area');
+        const lessonVideoFileInput = document.getElementById('lesson-video-file-input');
+
+        if (lessonVideoUploadArea && lessonVideoFileInput) {
+            // 클릭으로 파일 선택
+            lessonVideoUploadArea.addEventListener('click', () => {
+                lessonVideoFileInput.click();
+            });
+
+            // 파일 선택 이벤트
+            lessonVideoFileInput.addEventListener('change', (e) => {
+                this.handleLessonVideoUpload(e.target.files[0]);
+            });
+
+            // 드래그 앤 드롭 이벤트
+            lessonVideoUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                lessonVideoUploadArea.classList.add('drag-over');
+            });
+
+            lessonVideoUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                lessonVideoUploadArea.classList.remove('drag-over');
+            });
+
+            lessonVideoUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                lessonVideoUploadArea.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.handleLessonVideoUpload(files[0]);
+                }
+            });
+        }
+    }
+
+    handleLessonVideoUpload(file) {
+        if (!file) return;
+
+        // 파일 크기 체크 (500MB)
+        const maxSize = 500 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('파일 크기가 너무 큽니다. 500MB 이하의 파일을 선택해주세요.');
+            return;
+        }
+
+        // 비디오 파일인지 체크
+        if (!file.type.startsWith('video/')) {
+            alert('비디오 파일만 업로드할 수 있습니다.');
+            return;
+        }
+
+        // 파일을 Base64로 변환하여 저장
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.showLessonVideoPreview(e.target.result, file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    showLessonVideoPreview(videoData, file) {
+        const videoUploadArea = document.getElementById('lesson-video-upload-area');
+        const videoPreview = document.getElementById('lesson-video-preview');
+        const videoPlayer = document.getElementById('lesson-video-preview-player');
+        const videoFileName = document.getElementById('lesson-video-file-name');
+        const videoFileSize = document.getElementById('lesson-video-file-size');
+
+        // 업로드 영역 숨기고 미리보기 표시
+        videoUploadArea.style.display = 'none';
+        videoPreview.style.display = 'block';
+
+        // 비디오 설정
+        videoPlayer.src = videoData;
+        videoFileName.textContent = `파일명: ${file.name}`;
+        videoFileSize.textContent = `크기: ${this.formatFileSize(file.size)}`;
+
+        // 현재 편집 중인 차시에 비디오 정보 저장
+        this.currentLessonVideoData = {
             name: file.name,
             size: file.size,
             data: videoData,
@@ -608,6 +696,9 @@ class AdminSystem {
             }
         }
 
+        // 차시 목록 로드
+        this.loadLessons();
+
         document.getElementById('course-modal').style.display = 'block';
     }
 
@@ -678,6 +769,186 @@ class AdminSystem {
         this.closeCourseModal();
 
         alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
+    }
+
+    // 차시 관리 기능들
+    addNewLesson() {
+        this.currentEditingLesson = null;
+        this.resetLessonVideoUpload();
+        document.getElementById('lesson-modal-title').textContent = '새 차시 추가';
+        document.getElementById('lesson-form').reset();
+        document.getElementById('lesson-modal').style.display = 'block';
+    }
+
+    editLesson(lessonId) {
+        if (!this.currentEditingCourse || !this.currentEditingCourse.lessons) return;
+
+        const lesson = this.currentEditingCourse.lessons.find(l => l.id === lessonId);
+        if (!lesson) return;
+
+        this.currentEditingLesson = lesson;
+        document.getElementById('lesson-modal-title').textContent = '차시 편집';
+
+        // 폼 필드 채우기
+        document.getElementById('lesson-title-input').value = lesson.title;
+        document.getElementById('lesson-order-input').value = lesson.order;
+        document.getElementById('lesson-description-input').value = lesson.description;
+        document.getElementById('lesson-duration-input').value = lesson.duration;
+
+        // 영상 정보가 있으면 폼에 설정
+        if (lesson.video) {
+            if (lesson.video.type === 'url') {
+                document.getElementById('lesson-video-url-input').value = lesson.video.url;
+            } else if (lesson.video.type === 'file') {
+                // 파일이 있는 경우 미리보기 표시
+                this.showExistingLessonVideo(lesson.video);
+            }
+        }
+
+        document.getElementById('lesson-modal').style.display = 'block';
+    }
+
+    showExistingLessonVideo(videoData) {
+        if (videoData.type === 'file' && videoData.data) {
+            const videoUploadArea = document.getElementById('lesson-video-upload-area');
+            const videoPreview = document.getElementById('lesson-video-preview');
+            const videoPlayer = document.getElementById('lesson-video-preview-player');
+            const videoFileName = document.getElementById('lesson-video-file-name');
+            const videoFileSize = document.getElementById('lesson-video-file-size');
+
+            videoUploadArea.style.display = 'none';
+            videoPreview.style.display = 'block';
+
+            videoPlayer.src = videoData.data;
+            videoFileName.textContent = `파일명: ${videoData.name}`;
+            videoFileSize.textContent = `크기: ${this.formatFileSize(videoData.size)}`;
+
+            this.currentLessonVideoData = videoData;
+        }
+    }
+
+    saveLesson() {
+        const videoUrl = document.getElementById('lesson-video-url-input').value;
+
+        // 영상 데이터 수집
+        let videoData = null;
+        if (this.currentLessonVideoData) {
+            videoData = this.currentLessonVideoData;
+        } else if (videoUrl) {
+            videoData = {
+                url: videoUrl,
+                type: 'url'
+            };
+        }
+
+        const formData = {
+            title: document.getElementById('lesson-title-input').value,
+            order: parseInt(document.getElementById('lesson-order-input').value) || 1,
+            description: document.getElementById('lesson-description-input').value,
+            duration: document.getElementById('lesson-duration-input').value,
+            video: videoData
+        };
+
+        // 강좌에 lessons 배열이 없으면 생성
+        if (!this.currentEditingCourse.lessons) {
+            this.currentEditingCourse.lessons = [];
+        }
+
+        if (this.currentEditingLesson) {
+            // 기존 차시 수정
+            const index = this.currentEditingCourse.lessons.findIndex(l => l.id === this.currentEditingLesson.id);
+            this.currentEditingCourse.lessons[index] = { ...this.currentEditingLesson, ...formData };
+        } else {
+            // 새 차시 추가
+            const newLesson = {
+                id: Date.now(),
+                ...formData
+            };
+            this.currentEditingCourse.lessons.push(newLesson);
+        }
+
+        // 차시를 순서대로 정렬
+        this.currentEditingCourse.lessons.sort((a, b) => a.order - b.order);
+
+        // 강좌 정보 업데이트
+        const courseIndex = this.courses.findIndex(c => c.id === this.currentEditingCourse.id);
+        if (courseIndex !== -1) {
+            this.courses[courseIndex] = this.currentEditingCourse;
+        }
+
+        this.saveData();
+        this.loadLessons();
+        this.closeLessonModal();
+
+        alert(this.currentEditingLesson ? '차시가 수정되었습니다.' : '새 차시가 추가되었습니다.');
+    }
+
+    deleteLesson(lessonId) {
+        if (confirm('이 차시를 삭제하시겠습니까?')) {
+            if (this.currentEditingCourse && this.currentEditingCourse.lessons) {
+                this.currentEditingCourse.lessons = this.currentEditingCourse.lessons.filter(l => l.id !== lessonId);
+
+                // 강좌 정보 업데이트
+                const courseIndex = this.courses.findIndex(c => c.id === this.currentEditingCourse.id);
+                if (courseIndex !== -1) {
+                    this.courses[courseIndex] = this.currentEditingCourse;
+                }
+
+                this.saveData();
+                this.loadLessons();
+                alert('차시가 삭제되었습니다.');
+            }
+        }
+    }
+
+    loadLessons() {
+        const container = document.getElementById('lessons-list');
+        if (!this.currentEditingCourse || !this.currentEditingCourse.lessons || this.currentEditingCourse.lessons.length === 0) {
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">등록된 차시가 없습니다.</p>';
+            return;
+        }
+
+        // 차시를 순서대로 정렬
+        const sortedLessons = [...this.currentEditingCourse.lessons].sort((a, b) => a.order - b.order);
+
+        container.innerHTML = sortedLessons.map(lesson => `
+            <div class="lesson-item">
+                <div class="lesson-info">
+                    <div class="lesson-header">
+                        <h4>${lesson.order}차시. ${lesson.title}</h4>
+                        ${lesson.video ? '<span class="video-indicator">🎥</span>' : ''}
+                    </div>
+                    <p class="lesson-description">${lesson.description || ''}</p>
+                    <div class="lesson-meta">
+                        <span>재생시간: ${lesson.duration || '미정'}</span>
+                    </div>
+                </div>
+                <div class="lesson-actions">
+                    <button class="btn btn-sm btn-primary" onclick="admin.editLesson(${lesson.id})">편집</button>
+                    <button class="btn btn-sm btn-danger" onclick="admin.deleteLesson(${lesson.id})">삭제</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    closeLessonModal() {
+        document.getElementById('lesson-modal').style.display = 'none';
+        this.currentEditingLesson = null;
+        this.resetLessonVideoUpload();
+    }
+
+    resetLessonVideoUpload() {
+        // 차시 비디오 업로드 상태 초기화
+        this.currentLessonVideoData = null;
+        const videoUploadArea = document.getElementById('lesson-video-upload-area');
+        const videoPreview = document.getElementById('lesson-video-preview');
+        const videoUrlInput = document.getElementById('lesson-video-url-input');
+        const videoFileInput = document.getElementById('lesson-video-file-input');
+
+        if (videoUploadArea) videoUploadArea.style.display = 'block';
+        if (videoPreview) videoPreview.style.display = 'none';
+        if (videoUrlInput) videoUrlInput.value = '';
+        if (videoFileInput) videoFileInput.value = '';
     }
 
     showAddCourseModal() {
@@ -879,6 +1150,27 @@ function removeVideo() {
 
 function changeVideo() {
     document.getElementById('video-file-input').click();
+}
+
+// 차시 관리 전역 함수들
+function addNewLesson() {
+    admin.addNewLesson();
+}
+
+function closeLessonModal() {
+    admin.closeLessonModal();
+}
+
+function saveLesson() {
+    admin.saveLesson();
+}
+
+function removeLessonVideo() {
+    admin.resetLessonVideoUpload();
+}
+
+function changeLessonVideo() {
+    document.getElementById('lesson-video-file-input').click();
 }
 
 // 관리자 시스템 초기화
