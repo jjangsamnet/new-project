@@ -455,6 +455,51 @@
                     <label>커리큘럼 (한 줄에 하나씩 입력)</label>
                     <textarea id="course-curriculum-input" rows="6" placeholder="JavaScript 기본 문법&#10;DOM 조작 및 이벤트 처리&#10;비동기 프로그래밍" required></textarea>
                 </div>
+
+                <!-- 영상 업로드 섹션 -->
+                <div class="form-group">
+                    <label>강좌 영상</label>
+                    <div class="video-upload-section">
+                        <div class="video-upload-area" id="video-upload-area">
+                            <div class="upload-placeholder">
+                                <div class="upload-icon">📹</div>
+                                <p>클릭하여 영상 파일을 선택하거나<br>파일을 여기로 드래그하세요</p>
+                                <small>지원 형식: MP4, AVI, MOV (최대 500MB)</small>
+                            </div>
+                            <input type="file" id="video-file-input" accept="video/*" style="display: none;">
+                        </div>
+
+                        <div class="video-preview" id="video-preview" style="display: none;">
+                            <video id="video-preview-player" controls style="width: 100%; max-height: 300px;">
+                                Your browser does not support the video tag.
+                            </video>
+                            <div class="video-info">
+                                <p id="video-file-name"></p>
+                                <p id="video-file-size"></p>
+                            </div>
+                            <div class="video-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="removeVideo()">영상 제거</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="changeVideo()">다른 영상 선택</button>
+                            </div>
+                        </div>
+
+                        <div class="video-url-section">
+                            <div class="form-group">
+                                <label>또는 영상 URL 입력 (YouTube, Vimeo 등)</label>
+                                <input type="url" id="video-url-input" placeholder="https://www.youtube.com/watch?v=...">
+                                <small>YouTube, Vimeo 등의 외부 영상 링크를 입력할 수 있습니다.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 영상 목록 (기존 영상들) -->
+                <div class="form-group" id="existing-videos-section" style="display: none;">
+                    <label>기존 영상 목록</label>
+                    <div class="existing-videos-list" id="existing-videos-list">
+                        <!-- 기존 영상들이 여기에 표시됩니다 -->
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeCourseModal()">취소</button>
                     <button type="submit" class="btn btn-primary">저장</button>

@@ -84,6 +84,101 @@ class AdminSystem {
 
     bindDashboardEvents() {
         this.bindEvents();
+        this.bindVideoUploadEvents();
+    }
+
+    bindVideoUploadEvents() {
+        const videoUploadArea = document.getElementById('video-upload-area');
+        const videoFileInput = document.getElementById('video-file-input');
+
+        if (videoUploadArea && videoFileInput) {
+            // 클릭으로 파일 선택
+            videoUploadArea.addEventListener('click', () => {
+                videoFileInput.click();
+            });
+
+            // 파일 선택 이벤트
+            videoFileInput.addEventListener('change', (e) => {
+                this.handleVideoUpload(e.target.files[0]);
+            });
+
+            // 드래그 앤 드롭 이벤트
+            videoUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                videoUploadArea.classList.add('drag-over');
+            });
+
+            videoUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                videoUploadArea.classList.remove('drag-over');
+            });
+
+            videoUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                videoUploadArea.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.handleVideoUpload(files[0]);
+                }
+            });
+        }
+    }
+
+    handleVideoUpload(file) {
+        if (!file) return;
+
+        // 파일 크기 체크 (500MB)
+        const maxSize = 500 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('파일 크기가 너무 큽니다. 500MB 이하의 파일을 선택해주세요.');
+            return;
+        }
+
+        // 비디오 파일인지 체크
+        if (!file.type.startsWith('video/')) {
+            alert('비디오 파일만 업로드할 수 있습니다.');
+            return;
+        }
+
+        // 파일을 Base64로 변환하여 저장 (실제 환경에서는 서버에 업로드)
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.showVideoPreview(e.target.result, file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    showVideoPreview(videoData, file) {
+        const videoUploadArea = document.getElementById('video-upload-area');
+        const videoPreview = document.getElementById('video-preview');
+        const videoPlayer = document.getElementById('video-preview-player');
+        const videoFileName = document.getElementById('video-file-name');
+        const videoFileSize = document.getElementById('video-file-size');
+
+        // 업로드 영역 숨기고 미리보기 표시
+        videoUploadArea.style.display = 'none';
+        videoPreview.style.display = 'block';
+
+        // 비디오 설정
+        videoPlayer.src = videoData;
+        videoFileName.textContent = `파일명: ${file.name}`;
+        videoFileSize.textContent = `크기: ${this.formatFileSize(file.size)}`;
+
+        // 현재 편집 중인 강좌에 비디오 정보 저장
+        this.currentVideoData = {
+            name: file.name,
+            size: file.size,
+            data: videoData,
+            type: 'file'
+        };
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     getDefaultCourses() {
@@ -278,7 +373,12 @@ class AdminSystem {
         const tbody = document.getElementById('courses-table-body');
         tbody.innerHTML = this.courses.map(course => `
             <tr>
-                <td>${course.title}</td>
+                <td>
+                    <div class="course-title-cell">
+                        ${course.title}
+                        ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
+                    </div>
+                </td>
                 <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
                 <td>${course.price}</td>
@@ -391,7 +491,12 @@ class AdminSystem {
         const tbody = document.getElementById('courses-table-body');
         tbody.innerHTML = filteredCourses.map(course => `
             <tr>
-                <td>${course.title}</td>
+                <td>
+                    <div class="course-title-cell">
+                        ${course.title}
+                        ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
+                    </div>
+                </td>
                 <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
                 <td>${course.price}</td>
@@ -493,10 +598,52 @@ class AdminSystem {
         document.getElementById('course-description-input').value = course.description;
         document.getElementById('course-curriculum-input').value = course.curriculum.join('\n');
 
+        // 영상 정보가 있으면 폼에 설정
+        if (course.video) {
+            if (course.video.type === 'url') {
+                document.getElementById('video-url-input').value = course.video.url;
+            } else if (course.video.type === 'file') {
+                // 파일이 있는 경우 미리보기 표시
+                this.showExistingVideo(course.video);
+            }
+        }
+
         document.getElementById('course-modal').style.display = 'block';
     }
 
+    showExistingVideo(videoData) {
+        if (videoData.type === 'file' && videoData.data) {
+            const videoUploadArea = document.getElementById('video-upload-area');
+            const videoPreview = document.getElementById('video-preview');
+            const videoPlayer = document.getElementById('video-preview-player');
+            const videoFileName = document.getElementById('video-file-name');
+            const videoFileSize = document.getElementById('video-file-size');
+
+            videoUploadArea.style.display = 'none';
+            videoPreview.style.display = 'block';
+
+            videoPlayer.src = videoData.data;
+            videoFileName.textContent = `파일명: ${videoData.name}`;
+            videoFileSize.textContent = `크기: ${this.formatFileSize(videoData.size)}`;
+
+            this.currentVideoData = videoData;
+        }
+    }
+
     saveCourse() {
+        const videoUrl = document.getElementById('video-url-input').value;
+
+        // 영상 데이터 수집
+        let videoData = null;
+        if (this.currentVideoData) {
+            videoData = this.currentVideoData;
+        } else if (videoUrl) {
+            videoData = {
+                url: videoUrl,
+                type: 'url'
+            };
+        }
+
         const formData = {
             title: document.getElementById('course-title-input').value,
             category: document.getElementById('course-category-input').value,
@@ -505,7 +652,8 @@ class AdminSystem {
             duration: document.getElementById('course-duration-input').value,
             level: document.getElementById('course-level-input').value,
             description: document.getElementById('course-description-input').value,
-            curriculum: document.getElementById('course-curriculum-input').value.split('\n').filter(item => item.trim())
+            curriculum: document.getElementById('course-curriculum-input').value.split('\n').filter(item => item.trim()),
+            video: videoData
         };
 
         if (this.currentEditingCourse) {
@@ -530,6 +678,14 @@ class AdminSystem {
         this.closeCourseModal();
 
         alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
+    }
+
+    showAddCourseModal() {
+        this.currentEditingCourse = null;
+        this.resetVideoUpload();
+        document.getElementById('course-modal-title').textContent = '새 강좌 추가';
+        document.getElementById('course-form').reset();
+        document.getElementById('course-modal').style.display = 'block';
     }
 
     deleteCourse(courseId) {
@@ -606,6 +762,16 @@ class AdminSystem {
     closeCourseModal() {
         document.getElementById('course-modal').style.display = 'none';
         this.currentEditingCourse = null;
+        this.resetVideoUpload();
+    }
+
+    resetVideoUpload() {
+        // 비디오 업로드 상태 초기화
+        this.currentVideoData = null;
+        document.getElementById('video-upload-area').style.display = 'block';
+        document.getElementById('video-preview').style.display = 'none';
+        document.getElementById('video-url-input').value = '';
+        document.getElementById('video-file-input').value = '';
     }
 
     exportUsers() {
@@ -705,6 +871,14 @@ function logout() {
 
 function toggleSidebar() {
     document.querySelector('.sidebar').classList.toggle('open');
+}
+
+function removeVideo() {
+    admin.resetVideoUpload();
+}
+
+function changeVideo() {
+    document.getElementById('video-file-input').click();
 }
 
 // 관리자 시스템 초기화
