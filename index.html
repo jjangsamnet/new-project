@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 관리 시스템</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>프로젝트 관리 시스템</h1>
+            <button id="new-project-btn" class="btn btn-primary">새 프로젝트</button>
+        </header>
+
+        <main>
+            <section class="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>전체 프로젝트</h3>
+                        <span class="stat-number" id="total-projects">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>진행 중</h3>
+                        <span class="stat-number" id="active-projects">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>완료</h3>
+                        <span class="stat-number" id="completed-projects">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>지연</h3>
+                        <span class="stat-number" id="overdue-projects">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="projects-section">
+                <div class="section-header">
+                    <h2>프로젝트 목록</h2>
+                    <div class="filter-controls">
+                        <select id="status-filter">
+                            <option value="all">전체</option>
+                            <option value="planning">기획</option>
+                            <option value="in-progress">진행중</option>
+                            <option value="completed">완료</option>
+                            <option value="on-hold">보류</option>
+                        </select>
+                        <input type="text" id="search-input" placeholder="프로젝트 검색...">
+                    </div>
+                </div>
+
+                <div class="projects-grid" id="projects-grid">
+                    <!-- 프로젝트 카드들이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 프로젝트 추가/편집 모달 -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">새 프로젝트</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="project-form">
+                <div class="form-group">
+                    <label for="project-name">프로젝트 이름</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="project-description">설명</label>
+                    <textarea id="project-description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="project-status">상태</label>
+                        <select id="project-status">
+                            <option value="planning">기획</option>
+                            <option value="in-progress">진행중</option>
+                            <option value="completed">완료</option>
+                            <option value="on-hold">보류</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="project-priority">우선순위</label>
+                        <select id="project-priority">
+                            <option value="low">낮음</option>
+                            <option value="medium">보통</option>
+                            <option value="high">높음</option>
+                            <option value="urgent">긴급</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="project-start-date">시작일</label>
+                        <input type="date" id="project-start-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="project-end-date">마감일</label>
+                        <input type="date" id="project-end-date">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="project-team">팀원</label>
+                    <input type="text" id="project-team" placeholder="팀원 이름들을 콤마로 구분하여 입력">
+                </div>
+                <div class="form-group">
+                    <label for="project-progress">진행률 (%)</label>
+                    <input type="range" id="project-progress" min="0" max="100" value="0">
+                    <span id="progress-value">0%</span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
