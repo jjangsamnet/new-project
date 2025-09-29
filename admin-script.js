@@ -7,12 +7,44 @@ class AdminSystem {
         this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
         this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
         this.currentEditingCourse = null;
+        this.isAuthenticated = false;
+
+        // 관리자 계정 정보
+        this.adminCredentials = {
+            username: 'jjangsam',
+            password: '16181618wkd'
+        };
 
         this.init();
     }
 
     init() {
-        this.bindEvents();
+        // 로그인 상태 확인
+        this.checkAuthStatus();
+
+        if (this.isAuthenticated) {
+            this.showAdminDashboard();
+        } else {
+            this.showLoginForm();
+        }
+    }
+
+    checkAuthStatus() {
+        // 세션에서 로그인 상태 확인
+        const authStatus = sessionStorage.getItem('admin_authenticated');
+        this.isAuthenticated = authStatus === 'true';
+    }
+
+    showLoginForm() {
+        document.getElementById('admin-login').style.display = 'flex';
+        document.getElementById('admin-dashboard').style.display = 'none';
+        this.bindLoginEvents();
+    }
+
+    showAdminDashboard() {
+        document.getElementById('admin-login').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'block';
+        this.bindDashboardEvents();
         this.loadDashboard();
         this.loadCourses();
         this.loadUsers();
@@ -20,6 +52,38 @@ class AdminSystem {
         this.loadSettings();
         this.updateStats();
         this.showSection('dashboard');
+    }
+
+    bindLoginEvents() {
+        const loginForm = document.getElementById('admin-login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+    }
+
+    handleLogin() {
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const errorDiv = document.getElementById('login-error');
+
+        if (username === this.adminCredentials.username && password === this.adminCredentials.password) {
+            // 로그인 성공
+            this.isAuthenticated = true;
+            sessionStorage.setItem('admin_authenticated', 'true');
+            this.showAdminDashboard();
+            errorDiv.style.display = 'none';
+        } else {
+            // 로그인 실패
+            errorDiv.style.display = 'block';
+            document.getElementById('admin-password').value = '';
+        }
+    }
+
+    bindDashboardEvents() {
+        this.bindEvents();
     }
 
     getDefaultCourses() {
@@ -634,7 +698,8 @@ function goToMainSite() {
 
 function logout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-        window.location.href = 'lms.html';
+        sessionStorage.removeItem('admin_authenticated');
+        window.location.reload();
     }
 }
 
