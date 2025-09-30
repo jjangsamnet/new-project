@@ -68,8 +68,28 @@ function initializeFirebase() {
         // Firestore 연결 테스트
         db.enableNetwork().then(() => {
             console.log('✅ Firestore 네트워크 연결 성공');
+
+            // 간단한 연결 테스트
+            return db.collection('connection-test').limit(1).get();
+        }).then((snapshot) => {
+            console.log('✅ Firestore 읽기 테스트 성공 (' + snapshot.size + '개 문서)');
         }).catch(error => {
-            console.warn('⚠️ Firestore 네트워크 연결 경고:', error.message);
+            console.warn('⚠️ Firestore 연결 경고:', error.code, '-', error.message);
+
+            if (error.code === 'permission-denied') {
+                console.warn('권한 오류 - Firebase 보안 규칙을 확인하세요');
+            } else if (error.code === 'unavailable') {
+                console.warn('서비스 연결 실패 - 네트워크를 확인하세요');
+            }
+        });
+
+        // Auth 상태 확인
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                console.log('✅ 현재 로그인된 사용자:', user.email);
+            } else {
+                console.log('ℹ️ 현재 로그인된 사용자 없음');
+            }
         });
 
         console.log('🎉 Firebase 초기화 완료!');
@@ -77,6 +97,7 @@ function initializeFirebase() {
         console.log('  - 프로젝트 ID:', firebaseConfig.projectId);
         console.log('  - 인증 도메인:', firebaseConfig.authDomain);
         console.log('  - 앱 ID:', firebaseConfig.appId);
+        console.log('  - 현재 호스트:', window.location.host);
 
         return true;
     } catch (error) {
@@ -94,20 +115,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // 약간의 지연을 주어 모든 스크립트가 로드되도록 함
     setTimeout(() => {
         console.log('🔧 Firebase 초기화 시도...');
+        console.log('현재 URL:', window.location.href);
+        console.log('현재 프로토콜:', window.location.protocol);
         console.log('Firebase 객체 존재:', typeof firebase !== 'undefined');
+
+        // 로드된 스크립트 확인
+        const scripts = Array.from(document.querySelectorAll('script[src]'));
+        const firebaseScripts = scripts.filter(script => script.src.includes('firebase'));
+        console.log('로드된 Firebase 스크립트:', firebaseScripts.map(s => s.src));
+
+        // 전역 firebase 관련 변수들 확인
+        console.log('전역 firebase 변수들:', Object.keys(window).filter(key => key.toLowerCase().includes('firebase')));
 
         if (typeof firebase !== 'undefined') {
             console.log('Firebase SDK 버전:', firebase.SDK_VERSION);
+            console.log('Firebase apps:', firebase.apps.length);
+
             isFirebaseEnabled = initializeFirebase();
             console.log('Firebase 활성화 상태:', isFirebaseEnabled);
+
+            if (isFirebaseEnabled) {
+                console.log('✅ Firebase 초기화 성공');
+                console.log('사용 가능한 서비스:', {
+                    auth: typeof auth !== 'undefined',
+                    firestore: typeof db !== 'undefined',
+                    storage: typeof storage !== 'undefined'
+                });
+            } else {
+                console.error('❌ Firebase 초기화 실패');
+            }
         } else {
-            console.warn('❌ Firebase SDK가 로드되지 않았습니다. 로컬 모드로 실행됩니다.');
+            console.warn('❌ Firebase SDK가 로드되지 않았습니다.');
+            console.log('가능한 원인:');
+            console.log('1. 네트워크 연결 문제');
+            console.log('2. CDN 차단 (방화벽/보안 프로그램)');
+            console.log('3. HTTPS 요구사항 (일부 Firebase 기능)');
+            console.log('4. 스크립트 로딩 순서 문제');
             isFirebaseEnabled = false;
         }
 
         // firebaseService가 있다면 상태 업데이트
         if (typeof firebaseService !== 'undefined') {
             firebaseService.isFirebaseReady = isFirebaseEnabled;
+            console.log('firebaseService 상태 업데이트:', firebaseService.isFirebaseReady);
+        } else {
+            console.warn('⚠️ firebaseService가 아직 로드되지 않았습니다.');
         }
+
+        // 전역 상태 변수 설정
+        window.firebaseInitialized = true;
+        window.isFirebaseEnabled = isFirebaseEnabled;
+
+        // 커스텀 이벤트 발생
+        window.dispatchEvent(new CustomEvent('firebaseStatusUpdate', {
+            detail: { enabled: isFirebaseEnabled }
+        }));
     }, 500); // 500ms 지연
 });
