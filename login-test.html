@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 시스템 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        .test-btn.danger {
+            background: #dc3545;
+        }
+        .test-btn.success {
+            background: #28a745;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        #logs {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .info-card {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2196f3;
+        }
+        .info-card h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-ok { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-error { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 LMS 로그인 시스템 테스트</h1>
+        <p>데스크탑과 노트북 간 로그인 문제를 진단하고 테스트합니다.</p>
+
+        <!-- 시스템 상태 -->
+        <div class="test-section">
+            <h3>📊 시스템 상태</h3>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>환경 정보</h4>
+                    <div id="env-info"></div>
+                </div>
+                <div class="info-card">
+                    <h4>Firebase 상태</h4>
+                    <div id="firebase-status"></div>
+                </div>
+                <div class="info-card">
+                    <h4>로컬 데이터</h4>
+                    <div id="local-data-status"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로그인 테스트 -->
+        <div class="test-section">
+            <h3>🧪 로그인 테스트</h3>
+            <form id="test-login-form">
+                <div class="form-group">
+                    <label for="test-email">테스트 이메일:</label>
+                    <input type="email" id="test-email" value="test@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="test-password">테스트 비밀번호:</label>
+                    <input type="password" id="test-password" value="test123" required>
+                </div>
+                <button type="submit" class="test-btn">로그인 테스트 실행</button>
+                <button type="button" class="test-btn success" onclick="createTestUser()">테스트 계정 생성</button>
+                <button type="button" class="test-btn danger" onclick="clearAllData()">모든 데이터 초기화</button>
+            </form>
+        </div>
+
+        <!-- 기타 테스트 -->
+        <div class="test-section">
+            <h3>🛠️ 추가 테스트</h3>
+            <button class="test-btn" onclick="testFirebaseConnection()">Firebase 연결 테스트</button>
+            <button class="test-btn" onclick="testLocalStorage()">LocalStorage 테스트</button>
+            <button class="test-btn" onclick="showAllUsers()">등록된 사용자 확인</button>
+            <button class="test-btn" onclick="syncData()">데이터 동기화</button>
+            <button class="test-btn" onclick="clearLogs()">로그 지우기</button>
+        </div>
+
+        <div id="logs"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+    <!-- Firebase 설정 -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-config.local.js" onerror="console.log('로컬 Firebase 설정 파일이 없습니다.')"></script>
+
+    <!-- 임시 설정 (파일 로딩 실패 시 대안) -->
+    <script>
+        if (typeof firebaseConfigLocal === 'undefined') {
+            const firebaseConfigLocal = {
+                apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
+                authDomain: "lms-26168.firebaseapp.com",
+                databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "lms-26168",
+                storageBucket: "lms-26168.firebasestorage.app",
+                messagingSenderId: "264403082469",
+                appId: "1:264403082469:web:74f35eaec8e2c2f322080c",
+                measurementId: "G-9XGFHD0R9P"
+            };
+
+            if (typeof firebaseConfig !== 'undefined') {
+                Object.assign(firebaseConfig, firebaseConfigLocal);
+            }
+        }
+    </script>
+
+    <script src="firebase-service.js"></script>
+
+    <script>
+        const logs = document.getElementById('logs');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logs.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            logs.textContent = '';
+        }
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            log('로그인 테스트 시스템 시작');
+            await updateSystemStatus();
+
+            // 테스트 폼 이벤트
+            document.getElementById('test-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await testLogin();
+            });
+        });
+
+        async function updateSystemStatus() {
+            // 환경 정보
+            const envInfo = document.getElementById('env-info');
+            envInfo.innerHTML = `
+                <div><span class="status-indicator status-ok"></span>브라우저: ${navigator.userAgent.split(' ')[0]}</div>
+                <div><span class="status-indicator status-ok"></span>플랫폼: ${navigator.platform}</div>
+                <div><span class="status-indicator ${navigator.onLine ? 'status-ok' : 'status-error'}"></span>온라인: ${navigator.onLine ? '연결됨' : '오프라인'}</div>
+                <div><span class="status-indicator ${navigator.cookieEnabled ? 'status-ok' : 'status-error'}"></span>쿠키: ${navigator.cookieEnabled ? '활성화' : '비활성화'}</div>
+            `;
+
+            // Firebase 상태
+            const firebaseStatus = document.getElementById('firebase-status');
+            const isFirebaseReady = typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady;
+            firebaseStatus.innerHTML = `
+                <div><span class="status-indicator ${typeof firebase !== 'undefined' ? 'status-ok' : 'status-error'}"></span>SDK: ${typeof firebase !== 'undefined' ? '로드됨' : '로드 안됨'}</div>
+                <div><span class="status-indicator ${isFirebaseReady ? 'status-ok' : 'status-error'}"></span>서비스: ${isFirebaseReady ? '준비됨' : '준비 안됨'}</div>
+                <div><span class="status-indicator ${typeof firebaseConfig !== 'undefined' ? 'status-ok' : 'status-error'}"></span>설정: ${typeof firebaseConfig !== 'undefined' ? '로드됨' : '로드 안됨'}</div>
+            `;
+
+            // 로컬 데이터 상태
+            const localDataStatus = document.getElementById('local-data-status');
+            const users = JSON.parse(localStorage.getItem('lms_users') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('lms_current_user') || 'null');
+            const storageAvailable = (() => {
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    return true;
+                } catch(e) {
+                    return false;
+                }
+            })();
+
+            localDataStatus.innerHTML = `
+                <div><span class="status-indicator ${storageAvailable ? 'status-ok' : 'status-error'}"></span>LocalStorage: ${storageAvailable ? '사용 가능' : '사용 불가'}</div>
+                <div><span class="status-indicator ${users.length > 0 ? 'status-ok' : 'status-warning'}"></span>등록 사용자: ${users.length}명</div>
+                <div><span class="status-indicator ${currentUser ? 'status-ok' : 'status-warning'}"></span>현재 사용자: ${currentUser ? currentUser.email : '없음'}</div>
+            `;
+
+            log(`시스템 상태 업데이트 완료: Firebase=${isFirebaseReady}, Users=${users.length}`);
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            log(`로그인 테스트 시작: ${email}`);
+
+            try {
+                // LMS 클래스 인스턴스 생성 (임시)
+                const mockLMS = {
+                    users: JSON.parse(localStorage.getItem('lms_users') || '[]'),
+                    isFirebaseReady: typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady,
+
+                    async login(email, password) {
+                        log(`로그인 시도: Firebase Ready = ${this.isFirebaseReady}`);
+
+                        // Firebase 시도
+                        if (this.isFirebaseReady) {
+                            try {
+                                const result = await firebaseService.signIn(email, password);
+                                if (result.success) {
+                                    log('✅ Firebase 로그인 성공', 'success');
+                                    return { success: true, method: 'Firebase', user: result.user };
+                                } else {
+                                    log(`❌ Firebase 로그인 실패: ${result.error}`, 'error');
+                                }
+                            } catch (e) {
+                                log(`Firebase 오류: ${e.message}`, 'error');
+                            }
+                        }
+
+                        // LocalStorage 시도
+                        const localUser = this.users.find(u => u.email === email && u.password === password);
+                        if (localUser) {
+                            log('✅ LocalStorage 로그인 성공', 'success');
+                            return { success: true, method: 'localStorage', user: localUser };
+                        }
+
+                        log('❌ 모든 로그인 방법 실패', 'error');
+                        return { success: false };
+                    }
+                };
+
+                const result = await mockLMS.login(email, password);
+
+                if (result.success) {
+                    log(`🎉 로그인 성공! 방법: ${result.method}`, 'success');
+                    localStorage.setItem('lms_current_user', JSON.stringify(result.user));
+                    updateSystemStatus();
+                } else {
+                    log('❌ 로그인 실패', 'error');
+                }
+
+            } catch (error) {
+                log(`로그인 테스트 오류: ${error.message}`, 'error');
+            }
+        }
+
+        function createTestUser() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            const users = JSON.parse(localStorage.getItem('lms_users') || '[]');
+
+            if (!users.find(u => u.email === email)) {
+                const testUser = {
+                    id: Date.now(),
+                    name: 'Test User',
+                    email: email,
+                    password: password,
+                    phone: '010-1234-5678',
+                    createdAt: new Date().toISOString()
+                };
+
+                users.push(testUser);
+                localStorage.setItem('lms_users', JSON.stringify(users));
+                log(`✅ 테스트 계정 생성됨: ${email}`, 'success');
+                updateSystemStatus();
+            } else {
+                log(`⚠️ 이미 존재하는 계정: ${email}`, 'warning');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('모든 로컬 데이터를 삭제하시겠습니까?')) {
+                localStorage.removeItem('lms_users');
+                localStorage.removeItem('lms_current_user');
+                localStorage.removeItem('lms_courses');
+                localStorage.removeItem('lms_enrollments');
+                log('🗑️ 모든 로컬 데이터 삭제됨', 'warning');
+                updateSystemStatus();
+            }
+        }
+
+        async function testFirebaseConnection() {
+            if (typeof firebaseService === 'undefined') {
+                log('❌ firebaseService가 로드되지 않음', 'error');
+                return;
+            }
+
+            try {
+                const isReady = await firebaseService.waitForFirebase();
+                log(`Firebase 연결 테스트: ${isReady ? '성공' : '실패'}`, isReady ? 'success' : 'error');
+            } catch (e) {
+                log(`Firebase 연결 오류: ${e.message}`, 'error');
+            }
+        }
+
+        function testLocalStorage() {
+            try {
+                const testKey = 'storage-test-' + Date.now();
+                localStorage.setItem(testKey, 'test-value');
+                const value = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+
+                log('✅ LocalStorage 읽기/쓰기 테스트 성공', 'success');
+            } catch (e) {
+                log(`❌ LocalStorage 테스트 실패: ${e.message}`, 'error');
+            }
+        }
+
+        function showAllUsers() {
+            const users = JSON.parse(localStorage.getItem('lms_users') || '[]');
+            log(`등록된 사용자 목록 (${users.length}명):`);
+            users.forEach((user, index) => {
+                log(`${index + 1}. ${user.email} (이름: ${user.name})`);
+            });
+        }
+
+        async function syncData() {
+            log('데이터 동기화 시작...');
+            if (typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady) {
+                try {
+                    const users = await firebaseService.getUsers();
+                    localStorage.setItem('lms_users', JSON.stringify(users));
+                    log('✅ Firebase → LocalStorage 동기화 완료', 'success');
+                    updateSystemStatus();
+                } catch (e) {
+                    log(`동기화 오류: ${e.message}`, 'error');
+                }
+            } else {
+                log('❌ Firebase가 준비되지 않아 동기화 불가', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

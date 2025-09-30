@@ -380,24 +380,8 @@ class LMSSystem {
         });
     }
 
-    handleLogin(e) {
-        const formData = new FormData(e.target);
-        const email = formData.get('email') || e.target.querySelector('input[type="email"]').value;
-        const password = formData.get('password') || e.target.querySelector('input[type="password"]').value;
-
-        // 사용자 검증
-        const user = this.users.find(u => u.email === email && u.password === password);
-
-        if (user) {
-            this.currentUser = user;
-            localStorage.setItem('lms_current_user', JSON.stringify(user));
-            this.updateAuthUI();
-            this.closeModal('login-modal');
-            alert('로그인되었습니다!');
-        } else {
-            alert('이메일 또는 비밀번호가 올바르지 않습니다.');
-        }
-    }
+    // 이 함수는 더 이상 사용하지 않음 - 최신 handleLogin 함수로 대체됨
+    // 하위 호환성을 위해 남겨둠
 
     handleRegister(e) {
         const inputs = e.target.querySelectorAll('input');
@@ -646,23 +630,82 @@ class LMSSystem {
     }
 
     async login(email, password) {
-        try {
-            const result = await firebaseService.signIn(email, password);
+        console.log('📧 로그인 함수 시작:', { email, firebaseReady: this.isFirebaseReady });
 
-            if (result.success) {
-                this.currentUser = result.user;
+        try {
+            let loginResult = { success: false, user: null, method: null };
+
+            // Firebase 로그인 시도
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                console.log('🔥 Firebase 로그인 시도');
+                try {
+                    const result = await firebaseService.signIn(email, password);
+                    if (result.success) {
+                        loginResult = { ...result, method: 'Firebase' };
+                        console.log('✅ Firebase 로그인 성공');
+                    } else {
+                        console.log('❌ Firebase 로그인 실패:', result.error);
+                    }
+                } catch (firebaseError) {
+                    console.warn('Firebase 로그인 오류:', firebaseError);
+                }
+            }
+
+            // Firebase 실패 시 localStorage 폴백
+            if (!loginResult.success) {
+                console.log('💾 localStorage 로그인 시도');
+
+                // 로컬 사용자 데이터에서 검증
+                const localUser = this.users.find(u =>
+                    u.email === email && u.password === password
+                );
+
+                if (localUser) {
+                    loginResult = {
+                        success: true,
+                        user: localUser,
+                        method: 'localStorage'
+                    };
+                    console.log('✅ localStorage 로그인 성공');
+                } else {
+                    console.log('❌ localStorage 로그인 실패: 사용자를 찾을 수 없음');
+
+                    // 등록된 사용자 목록 디버깅
+                    console.log('등록된 사용자 수:', this.users.length);
+                    console.log('사용자 이메일 목록:', this.users.map(u => u.email));
+                }
+            }
+
+            // 로그인 성공 처리
+            if (loginResult.success) {
+                console.log(`🎉 로그인 성공 (${loginResult.method}):`, loginResult.user);
+
+                this.currentUser = loginResult.user;
+
+                // localStorage에 현재 사용자 저장 (동기화)
+                try {
+                    localStorage.setItem('lms_current_user', JSON.stringify(loginResult.user));
+                    console.log('✅ 사용자 정보 localStorage 저장 완료');
+                } catch (storageError) {
+                    console.warn('localStorage 저장 실패:', storageError);
+                }
+
                 this.updateAuthUI();
                 await this.loadMyCourses();
                 this.closeAllModals();
-                alert('로그인되었습니다!');
+
+                alert(`로그인되었습니다! (${loginResult.method})`);
                 return true;
+
             } else {
-                alert(result.error || '로그인에 실패했습니다.');
+                console.log('❌ 모든 로그인 방법 실패');
+                alert('이메일 또는 비밀번호가 올바르지 않습니다.\n\n다음을 확인해주세요:\n• 이메일과 비밀번호가 정확한지\n• 대소문자가 맞는지\n• 공백이 포함되지 않았는지');
                 return false;
             }
+
         } catch (error) {
-            console.error('로그인 오류:', error);
-            alert('로그인 중 오류가 발생했습니다.');
+            console.error('로그인 전체 오류:', error);
+            alert('로그인 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
             return false;
         }
     }
@@ -700,9 +743,66 @@ class LMSSystem {
     }
 
     async handleLogin(e) {
-        const email = e.target.querySelector('input[type="email"]').value;
+        const email = e.target.querySelector('input[type="email"]').value.trim();
         const password = e.target.querySelector('input[type="password"]').value;
-        await this.login(email, password);
+
+        // 디버깅 정보 로그
+        console.log('🔐 로그인 시도:', {
+            email: email,
+            passwordLength: password.length,
+            deviceInfo: this.getDeviceInfo(),
+            firebaseReady: this.isFirebaseReady,
+            timestamp: new Date().toISOString()
+        });
+
+        // 입력값 검증
+        if (!email || !password) {
+            console.warn('로그인 실패: 빈 입력값');
+            alert('이메일과 비밀번호를 모두 입력해주세요.');
+            return;
+        }
+
+        // 이메일 형식 검증
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+            console.warn('로그인 실패: 잘못된 이메일 형식');
+            alert('올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+
+        try {
+            const success = await this.login(email, password);
+            console.log('로그인 결과:', success ? '성공' : '실패');
+        } catch (error) {
+            console.error('로그인 처리 오류:', error);
+            alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+        }
+    }
+
+    getDeviceInfo() {
+        return {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            cookieEnabled: navigator.cookieEnabled,
+            onLine: navigator.onLine,
+            localStorageAvailable: this.isLocalStorageAvailable(),
+            screen: {
+                width: screen.width,
+                height: screen.height
+            }
+        };
+    }
+
+    isLocalStorageAvailable() {
+        try {
+            const test = 'localStorage-test';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     async handleRegister(e) {
