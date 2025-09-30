@@ -15,8 +15,16 @@ const firebaseConfig = {
 };
 
 // 로컬 설정 파일이 있다면 사용 (개발용)
+console.log('🔧 Firebase 설정 병합 시도...');
+console.log('기본 설정:', firebaseConfig);
+
 if (typeof firebaseConfigLocal !== 'undefined') {
+    console.log('✓ 로컬 설정 파일 발견:', firebaseConfigLocal);
     Object.assign(firebaseConfig, firebaseConfigLocal);
+    console.log('✓ 설정 병합 완료:', firebaseConfig);
+} else {
+    console.warn('⚠ firebaseConfigLocal 변수가 정의되지 않았습니다.');
+    console.log('현재 전역 변수:', Object.keys(window).filter(key => key.includes('firebase')));
 }
 
 // Firebase 초기화

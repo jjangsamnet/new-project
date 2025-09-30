@@ -84,6 +84,32 @@
     <!-- 로컬 Firebase 설정 (존재하는 경우) -->
     <script src="firebase-config.local.js" onerror="console.log('로컬 Firebase 설정 파일이 없습니다. 개발 모드에서는 firebase-config.local.js를 생성하세요.')"></script>
 
+    <!-- 임시 설정 (파일 로딩 실패 시 대안) -->
+    <script>
+        // 로컬 설정 파일이 로드되지 않은 경우를 대비한 대안
+        if (typeof firebaseConfigLocal === 'undefined') {
+            console.warn('⚠ firebase-config.local.js 파일이 로드되지 않았습니다. 임시 설정을 사용합니다.');
+
+            // 실제 Firebase 설정으로 교체 (테스트용)
+            const firebaseConfigLocal = {
+                apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
+                authDomain: "lms-26168.firebaseapp.com",
+                databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "lms-26168",
+                storageBucket: "lms-26168.firebasestorage.app",
+                messagingSenderId: "264403082469",
+                appId: "1:264403082469:web:74f35eaec8e2c2f322080c",
+                measurementId: "G-9XGFHD0R9P"
+            };
+
+            // 설정 병합
+            if (typeof firebaseConfig !== 'undefined') {
+                Object.assign(firebaseConfig, firebaseConfigLocal);
+                console.log('✓ 임시 설정으로 Firebase 설정을 업데이트했습니다:', firebaseConfig);
+            }
+        }
+    </script>
+
     <script>
         const logs = document.getElementById('logs');
         const statusDiv = document.getElementById('connection-status');
@@ -105,6 +131,19 @@
 
         // 초기 연결 상태 확인
         document.addEventListener('DOMContentLoaded', () => {
+            // 설정 상태 즉시 확인
+            log('=== 설정 파일 로드 상태 확인 ===');
+            log('firebaseConfig 존재:', typeof firebaseConfig !== 'undefined');
+            log('firebaseConfigLocal 존재:', typeof firebaseConfigLocal !== 'undefined');
+
+            if (typeof firebaseConfig !== 'undefined') {
+                log('현재 firebaseConfig:', firebaseConfig);
+            }
+
+            if (typeof firebaseConfigLocal !== 'undefined') {
+                log('현재 firebaseConfigLocal:', firebaseConfigLocal);
+            }
+
             setTimeout(() => {
                 if (typeof isFirebaseEnabled !== 'undefined' && isFirebaseEnabled) {
                     updateStatus('✅ Firebase 연결 성공!', 'success');
