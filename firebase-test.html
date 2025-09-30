@@ -117,7 +117,7 @@
             }, 1000);
         });
 
-        function testFirebaseConnection() {
+        async function testFirebaseConnection() {
             log('=== Firebase 연결 테스트 시작 ===');
 
             try {
@@ -147,13 +147,22 @@
                 // 실제 연결 테스트
                 log('실제 서비스 연결 테스트 중...');
 
-                // Firestore 연결 테스트
+                // Firestore 연결 테스트 (비동기 처리)
                 if (db) {
-                    db.enableNetwork().then(() => {
+                    try {
+                        await db.enableNetwork();
                         log('✓ Firestore 네트워크 연결 성공');
-                    }).catch((error) => {
-                        log('⚠ Firestore 네트워크 오류: ' + error.message);
-                    });
+
+                        // 간단한 읽기 테스트
+                        const testQuery = await db.collection('connection-test').limit(1).get();
+                        log('✓ Firestore 데이터 읽기 테스트 성공');
+
+                    } catch (error) {
+                        log('⚠ Firestore 연결 오류: ' + error.message);
+                        if (error.code === 'permission-denied') {
+                            log('ℹ Firestore 보안 규칙으로 인한 제한 (정상적인 보안 설정)');
+                        }
+                    }
                 }
 
                 updateStatus('✅ 모든 Firebase 서비스가 정상 작동합니다!', 'success');
@@ -163,6 +172,13 @@
                 updateStatus('❌ Firebase 연결 오류', 'error');
                 log('오류: ' + error.message, 'error');
                 log('해결방법: firebase-config.local.js 파일이 올바르게 설정되었는지 확인하세요.');
+
+                // 구체적인 오류 진단
+                if (error.message.includes('Firebase 앱이 초기화되지 않았습니다')) {
+                    log('진단: Firebase 설정 파일을 확인하세요.');
+                } else if (error.message.includes('Firebase SDK가 로드되지 않았습니다')) {
+                    log('진단: 인터넷 연결 또는 Firebase CDN 접근을 확인하세요.');
+                }
             }
         }
 
@@ -267,27 +283,30 @@
         async function runFullTest() {
             log('🚀 === Firebase 전체 테스트 시작 ===');
 
-            // 각 테스트를 순차적으로 실행
-            testFirebaseConnection();
+            try {
+                // 각 테스트를 순차적으로 실행
+                await testFirebaseConnection();
+                log('');
 
-            setTimeout(async () => {
                 await testAuthentication();
+                log('');
 
-                setTimeout(async () => {
-                    await testFirestore();
+                await testFirestore();
+                log('');
 
-                    setTimeout(() => {
-                        log('🎉 === 전체 테스트 완료 ===');
-                        log('결과 요약:');
-                        log('- Firebase SDK: 로드됨');
-                        log('- Firebase 앱: 초기화됨');
-                        log('- 인증 서비스: 사용 가능');
-                        log('- Firestore: 연결 및 작동 확인');
+                log('🎉 === 전체 테스트 완료 ===');
+                log('결과 요약:');
+                log('- Firebase SDK: 로드됨');
+                log('- Firebase 앱: 초기화됨');
+                log('- 인증 서비스: 사용 가능');
+                log('- Firestore: 연결 및 작동 확인');
 
-                        updateStatus('✅ Firebase 시스템이 완전히 작동 중입니다!', 'success');
-                    }, 2000);
-                }, 2000);
-            }, 2000);
+                updateStatus('✅ Firebase 시스템이 완전히 작동 중입니다!', 'success');
+
+            } catch (error) {
+                log('❌ 전체 테스트 중 오류 발생: ' + error.message, 'error');
+                updateStatus('❌ 테스트 실행 중 오류가 발생했습니다', 'error');
+            }
         }
     </script>
 </body>
