@@ -383,48 +383,8 @@ class LMSSystem {
     // 이 함수는 더 이상 사용하지 않음 - 최신 handleLogin 함수로 대체됨
     // 하위 호환성을 위해 남겨둠
 
-    handleRegister(e) {
-        const inputs = e.target.querySelectorAll('input');
-        const name = inputs[0].value;
-        const email = inputs[1].value;
-        const password = inputs[2].value;
-        const confirmPassword = inputs[3].value;
-        const phone = inputs[4].value;
-        const agreeTerms = inputs[5].checked;
-
-        // 유효성 검사
-        if (!agreeTerms) {
-            alert('이용약관에 동의해주세요.');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            alert('비밀번호가 일치하지 않습니다.');
-            return;
-        }
-
-        if (this.users.find(u => u.email === email)) {
-            alert('이미 등록된 이메일입니다.');
-            return;
-        }
-
-        // 새 사용자 생성
-        const newUser = {
-            id: Date.now(),
-            name,
-            email,
-            password,
-            phone,
-            registeredAt: new Date().toISOString()
-        };
-
-        this.users.push(newUser);
-        localStorage.setItem('lms_users', JSON.stringify(this.users));
-
-        alert('회원가입이 완료되었습니다!');
-        this.closeModal('register-modal');
-        e.target.reset();
-    }
+    // 이 함수는 더 이상 사용하지 않음 - 최신 handleRegister 함수로 대체됨
+    // 하위 호환성을 위해 남겨둠
 
     handleContactForm(e) {
         alert('문의가 접수되었습니다. 빠른 시일 내에 답변드리겠습니다.');
@@ -655,20 +615,32 @@ class LMSSystem {
             if (!loginResult.success) {
                 console.log('💾 localStorage 로그인 시도');
 
-                // 로컬 사용자 데이터에서 검증
-                const localUser = this.users.find(u =>
-                    u.email === email && u.password === password
-                );
+                // 사용자 찾기
+                const foundUser = this.users.find(u => u.email === email);
 
-                if (localUser) {
-                    loginResult = {
-                        success: true,
-                        user: localUser,
-                        method: 'localStorage'
-                    };
-                    console.log('✅ localStorage 로그인 성공');
+                if (foundUser) {
+                    console.log('사용자 발견:', { email: foundUser.email, authMethod: foundUser.authMethod });
+
+                    // Firebase 등록 사용자인 경우
+                    if (foundUser.authMethod === 'firebase') {
+                        console.log('❌ Firebase 등록 사용자 - Firebase Authentication 필요');
+                        console.log('Firebase가 비활성화되어 있거나 연결에 실패했습니다.');
+                    }
+                    // localStorage 등록 사용자인 경우
+                    else if (foundUser.authMethod === 'localStorage' || !foundUser.authMethod) {
+                        if (foundUser.password === password) {
+                            loginResult = {
+                                success: true,
+                                user: foundUser,
+                                method: 'localStorage'
+                            };
+                            console.log('✅ localStorage 로그인 성공');
+                        } else {
+                            console.log('❌ 비밀번호 불일치');
+                        }
+                    }
                 } else {
-                    console.log('❌ localStorage 로그인 실패: 사용자를 찾을 수 없음');
+                    console.log('❌ 등록되지 않은 이메일');
 
                     // 등록된 사용자 목록 디버깅
                     console.log('등록된 사용자 수:', this.users.length);
@@ -699,7 +671,25 @@ class LMSSystem {
 
             } else {
                 console.log('❌ 모든 로그인 방법 실패');
-                alert('이메일 또는 비밀번호가 올바르지 않습니다.\n\n다음을 확인해주세요:\n• 이메일과 비밀번호가 정확한지\n• 대소문자가 맞는지\n• 공백이 포함되지 않았는지');
+
+                // 사용자에게 구체적인 오류 정보 제공
+                const foundUser = this.users.find(u => u.email === email);
+                let errorMessage = '로그인에 실패했습니다.\n\n';
+
+                if (foundUser) {
+                    if (foundUser.authMethod === 'firebase') {
+                        errorMessage += '이 계정은 Firebase로 등록되었습니다.\nFirebase 연결 상태를 확인해주세요.\n\n';
+                        errorMessage += '해결방법:\n• 인터넷 연결 확인\n• 페이지 새로고침 후 재시도';
+                    } else {
+                        errorMessage += '비밀번호가 올바르지 않습니다.\n\n';
+                        errorMessage += '다음을 확인해주세요:\n• 비밀번호가 정확한지\n• 대소문자가 맞는지\n• 공백이 포함되지 않았는지';
+                    }
+                } else {
+                    errorMessage += '등록되지 않은 이메일입니다.\n\n';
+                    errorMessage += '다음을 확인해주세요:\n• 이메일이 정확한지\n• 회원가입을 완료했는지';
+                }
+
+                alert(errorMessage);
                 return false;
             }
 
@@ -711,19 +701,95 @@ class LMSSystem {
     }
 
     async register(userData) {
-        try {
-            const result = await firebaseService.signUp(userData.email, userData.password, userData);
+        console.log('📝 회원가입 시작:', { email: userData.email, firebaseReady: this.isFirebaseReady });
 
-            if (result.success) {
-                alert('회원가입이 완료되었습니다!');
+        try {
+            let registrationResult = { success: false, user: null, method: null };
+
+            // Firebase 회원가입 시도
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                console.log('🔥 Firebase 회원가입 시도');
+                try {
+                    const result = await firebaseService.signUp(userData.email, userData.password, userData);
+                    if (result.success) {
+                        registrationResult = { ...result, method: 'Firebase' };
+                        console.log('✅ Firebase 회원가입 성공');
+                    } else {
+                        console.log('❌ Firebase 회원가입 실패:', result.error);
+                    }
+                } catch (firebaseError) {
+                    console.warn('Firebase 회원가입 오류:', firebaseError);
+                }
+            }
+
+            // Firebase 실패 시 localStorage 폴백
+            if (!registrationResult.success) {
+                console.log('💾 localStorage 회원가입 시도');
+
+                // 중복 이메일 확인
+                const existingUser = this.users.find(u => u.email === userData.email);
+                if (existingUser) {
+                    console.log('❌ 이미 존재하는 이메일');
+                    alert('이미 등록된 이메일입니다.');
+                    return false;
+                }
+
+                // 로컬 회원가입
+                const newUser = {
+                    id: Date.now(),
+                    name: userData.name,
+                    email: userData.email,
+                    password: userData.password,
+                    phone: userData.phone,
+                    registeredAt: new Date().toISOString()
+                };
+
+                this.users.push(newUser);
+                localStorage.setItem('lms_users', JSON.stringify(this.users));
+
+                registrationResult = {
+                    success: true,
+                    user: newUser,
+                    method: 'localStorage'
+                };
+                console.log('✅ localStorage 회원가입 성공');
+            }
+
+            // 회원가입 성공 처리
+            if (registrationResult.success) {
+                console.log(`🎉 회원가입 성공 (${registrationResult.method}):`, registrationResult.user);
+
+                // localStorage에도 사용자 목록 업데이트 (동기화)
+                if (registrationResult.method === 'Firebase') {
+                    const currentUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+                    const existsInLocal = currentUsers.find(u => u.email === userData.email);
+
+                    if (!existsInLocal) {
+                        // Firebase 사용자 정보를 localStorage에 저장 (비밀번호 제외)
+                        const syncUser = {
+                            ...registrationResult.user,
+                            authMethod: 'firebase',
+                            registeredAt: new Date().toISOString()
+                        };
+                        currentUsers.push(syncUser);
+                        localStorage.setItem('lms_users', JSON.stringify(currentUsers));
+                        this.users = currentUsers;
+                        console.log('✅ Firebase 사용자를 localStorage에 동기화');
+                    }
+                }
+
+                alert(`회원가입이 완료되었습니다! (${registrationResult.method})`);
                 this.closeAllModals();
                 return true;
+
             } else {
-                alert(result.error || '회원가입에 실패했습니다.');
+                console.log('❌ 모든 회원가입 방법 실패');
+                alert('회원가입에 실패했습니다. 다시 시도해주세요.');
                 return false;
             }
+
         } catch (error) {
-            console.error('회원가입 오류:', error);
+            console.error('회원가입 전체 오류:', error);
             alert('회원가입 중 오류가 발생했습니다.');
             return false;
         }

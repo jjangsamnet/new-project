@@ -150,6 +150,14 @@
             <button class="test-btn" onclick="clearLogs()">로그 지우기</button>
         </div>
 
+        <!-- 회원가입 동기화 테스트 -->
+        <div class="test-section">
+            <h3>🔄 회원가입 동기화 테스트</h3>
+            <button class="test-btn success" onclick="testRegistrationSync()">회원가입 동기화 테스트</button>
+            <button class="test-btn" onclick="compareFirebaseAndLocal()">Firebase vs LocalStorage 비교</button>
+            <button class="test-btn success" onclick="testCompleteRegisterLoginFlow()">회원가입→로그인 전체 테스트</button>
+        </div>
+
         <div id="logs"></div>
     </div>
 
@@ -385,15 +393,306 @@
             log('데이터 동기화 시작...');
             if (typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady) {
                 try {
-                    const users = await firebaseService.getUsers();
-                    localStorage.setItem('lms_users', JSON.stringify(users));
+                    const firebaseUsers = await firebaseService.getUsers();
+                    const localUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+
+                    log(`Firebase 사용자: ${firebaseUsers.length}명`);
+                    log(`LocalStorage 사용자: ${localUsers.length}명`);
+
+                    // Firebase 데이터로 localStorage 업데이트
+                    localStorage.setItem('lms_users', JSON.stringify(firebaseUsers));
+
                     log('✅ Firebase → LocalStorage 동기화 완료', 'success');
+                    log(`동기화된 사용자 수: ${firebaseUsers.length}명`);
                     updateSystemStatus();
                 } catch (e) {
                     log(`동기화 오류: ${e.message}`, 'error');
                 }
             } else {
                 log('❌ Firebase가 준비되지 않아 동기화 불가', 'error');
+            }
+        }
+
+        async function testRegistrationSync() {
+            log('🧪 회원가입 동기화 테스트 시작...');
+
+            if (typeof firebaseService === 'undefined' || !firebaseService.isFirebaseReady) {
+                log('❌ Firebase가 준비되지 않음. 테스트 불가', 'error');
+                return;
+            }
+
+            try {
+                const testEmail = `test-sync-${Date.now()}@example.com`;
+                const testUser = {
+                    name: '동기화 테스트',
+                    email: testEmail,
+                    password: 'test123',
+                    phone: '010-1234-5678'
+                };
+
+                log(`테스트 사용자 생성: ${testEmail}`);
+
+                // Firebase에 사용자 등록
+                const result = await firebaseService.signUp(testUser.email, testUser.password, testUser);
+
+                if (result.success) {
+                    log('✅ Firebase 회원가입 성공', 'success');
+
+                    // Firebase에서 사용자 목록 조회
+                    const firebaseUsers = await firebaseService.getUsers();
+                    const newUser = firebaseUsers.find(u => u.email === testEmail);
+
+                    if (newUser) {
+                        log('✅ Firebase에서 사용자 확인됨', 'success');
+
+                        // LocalStorage에 동기화
+                        const localUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+                        const existsInLocal = localUsers.find(u => u.email === testEmail);
+
+                        if (!existsInLocal) {
+                            localUsers.push(newUser);
+                            localStorage.setItem('lms_users', JSON.stringify(localUsers));
+                            log('✅ LocalStorage에 동기화 완료', 'success');
+                        } else {
+                            log('ℹ️ 이미 LocalStorage에 존재함', 'info');
+                        }
+
+                        log('🎉 회원가입 동기화 테스트 성공!', 'success');
+                        updateSystemStatus();
+
+                    } else {
+                        log('❌ Firebase에서 사용자를 찾을 수 없음', 'error');
+                    }
+                } else {
+                    log(`❌ Firebase 회원가입 실패: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`회원가입 동기화 테스트 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function compareFirebaseAndLocal() {
+            log('🔍 Firebase vs LocalStorage 사용자 비교...');
+
+            try {
+                if (typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady) {
+                    const firebaseUsers = await firebaseService.getUsers();
+                    const localUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+
+                    log(`Firebase 사용자 수: ${firebaseUsers.length}`);
+                    log(`LocalStorage 사용자 수: ${localUsers.length}`);
+
+                    // Firebase 사용자 목록
+                    log('Firebase 사용자 목록:');
+                    firebaseUsers.forEach((user, index) => {
+                        log(`  ${index + 1}. ${user.email} (${user.name}) [${user.authMethod || 'firebase'}]`);
+                    });
+
+                    // LocalStorage 사용자 목록
+                    log('LocalStorage 사용자 목록:');
+                    localUsers.forEach((user, index) => {
+                        log(`  ${index + 1}. ${user.email} (${user.name}) [${user.authMethod || 'unknown'}]`);
+                    });
+
+                    // 차이점 분석
+                    const firebaseEmails = firebaseUsers.map(u => u.email);
+                    const localEmails = localUsers.map(u => u.email);
+
+                    const onlyInFirebase = firebaseEmails.filter(email => !localEmails.includes(email));
+                    const onlyInLocal = localEmails.filter(email => !firebaseEmails.includes(email));
+
+                    if (onlyInFirebase.length > 0) {
+                        log(`🔥 Firebase에만 있는 사용자 (${onlyInFirebase.length}명):`, 'warning');
+                        onlyInFirebase.forEach(email => log(`  - ${email}`));
+                    }
+
+                    if (onlyInLocal.length > 0) {
+                        log(`💾 LocalStorage에만 있는 사용자 (${onlyInLocal.length}명):`, 'warning');
+                        onlyInLocal.forEach(email => log(`  - ${email}`));
+                    }
+
+                    if (onlyInFirebase.length === 0 && onlyInLocal.length === 0) {
+                        log('✅ Firebase와 LocalStorage가 완전히 동기화됨', 'success');
+                    } else {
+                        log('⚠️ Firebase와 LocalStorage 간 차이가 발견됨', 'warning');
+                    }
+
+                } else {
+                    log('❌ Firebase가 준비되지 않음', 'error');
+                }
+
+            } catch (error) {
+                log(`비교 중 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCompleteRegisterLoginFlow() {
+            log('🚀 완전한 회원가입→로그인 플로우 테스트 시작...');
+
+            try {
+                const testEmail = `test-flow-${Date.now()}@example.com`;
+                const testPassword = 'test123';
+                const testUser = {
+                    name: '플로우 테스트',
+                    email: testEmail,
+                    password: testPassword,
+                    phone: '010-1234-5678'
+                };
+
+                log(`테스트 사용자: ${testEmail} / ${testPassword}`);
+
+                // LMS 인스턴스 생성 (실제 LMS와 동일한 로직)
+                const mockLMS = {
+                    users: JSON.parse(localStorage.getItem('lms_users') || '[]'),
+                    isFirebaseReady: typeof firebaseService !== 'undefined' && firebaseService.isFirebaseReady,
+
+                    async register(userData) {
+                        log('📝 회원가입 시도...');
+                        let registrationResult = { success: false, user: null, method: null };
+
+                        // Firebase 회원가입 시도
+                        if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                            try {
+                                const result = await firebaseService.signUp(userData.email, userData.password, userData);
+                                if (result.success) {
+                                    registrationResult = { ...result, method: 'Firebase' };
+                                    log('✅ Firebase 회원가입 성공', 'success');
+
+                                    // localStorage 동기화
+                                    const currentUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+                                    const existsInLocal = currentUsers.find(u => u.email === userData.email);
+                                    if (!existsInLocal) {
+                                        const syncUser = {
+                                            ...registrationResult.user,
+                                            authMethod: 'firebase',
+                                            registeredAt: new Date().toISOString()
+                                        };
+                                        currentUsers.push(syncUser);
+                                        localStorage.setItem('lms_users', JSON.stringify(currentUsers));
+                                        this.users = currentUsers;
+                                        log('✅ localStorage 동기화 완료', 'success');
+                                    }
+                                } else {
+                                    log(`❌ Firebase 회원가입 실패: ${result.error}`, 'error');
+                                }
+                            } catch (e) {
+                                log(`Firebase 회원가입 오류: ${e.message}`, 'error');
+                            }
+                        }
+
+                        // Firebase 실패 시 localStorage 폴백
+                        if (!registrationResult.success) {
+                            const existingUser = this.users.find(u => u.email === userData.email);
+                            if (existingUser) {
+                                return { success: false, error: '이미 존재하는 이메일입니다.' };
+                            }
+
+                            const newUser = {
+                                id: Date.now(),
+                                name: userData.name,
+                                email: userData.email,
+                                password: userData.password,
+                                phone: userData.phone,
+                                authMethod: 'localStorage',
+                                registeredAt: new Date().toISOString()
+                            };
+
+                            this.users.push(newUser);
+                            localStorage.setItem('lms_users', JSON.stringify(this.users));
+                            registrationResult = { success: true, user: newUser, method: 'localStorage' };
+                            log('✅ localStorage 회원가입 성공', 'success');
+                        }
+
+                        return registrationResult;
+                    },
+
+                    async login(email, password) {
+                        log('🔑 로그인 시도...');
+                        let loginResult = { success: false, user: null, method: null };
+
+                        // Firebase 로그인 시도
+                        if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                            try {
+                                const result = await firebaseService.signIn(email, password);
+                                if (result.success) {
+                                    loginResult = { ...result, method: 'Firebase' };
+                                    log('✅ Firebase 로그인 성공', 'success');
+                                } else {
+                                    log(`❌ Firebase 로그인 실패: ${result.error}`, 'warning');
+                                }
+                            } catch (e) {
+                                log(`Firebase 로그인 오류: ${e.message}`, 'warning');
+                            }
+                        }
+
+                        // Firebase 실패 시 localStorage 폴백
+                        if (!loginResult.success) {
+                            const foundUser = this.users.find(u => u.email === email);
+                            if (foundUser) {
+                                if (foundUser.authMethod === 'firebase') {
+                                    log('❌ Firebase 계정 - Firebase Authentication 필요', 'error');
+                                } else if (foundUser.authMethod === 'localStorage' || !foundUser.authMethod) {
+                                    if (foundUser.password === password) {
+                                        loginResult = { success: true, user: foundUser, method: 'localStorage' };
+                                        log('✅ localStorage 로그인 성공', 'success');
+                                    } else {
+                                        log('❌ 비밀번호 불일치', 'error');
+                                    }
+                                }
+                            } else {
+                                log('❌ 등록되지 않은 이메일', 'error');
+                            }
+                        }
+
+                        return loginResult;
+                    }
+                };
+
+                // 1단계: 회원가입
+                log('1️⃣ 회원가입 단계');
+                const registerResult = await mockLMS.register(testUser);
+
+                if (!registerResult.success) {
+                    log(`❌ 회원가입 실패: ${registerResult.error}`, 'error');
+                    return;
+                }
+
+                log(`✅ 회원가입 성공 (${registerResult.method})`, 'success');
+
+                // 2단계: 즉시 로그인 시도
+                log('2️⃣ 로그인 단계');
+                const loginResult = await mockLMS.login(testEmail, testPassword);
+
+                if (loginResult.success) {
+                    log(`🎉 로그인 성공 (${loginResult.method})!`, 'success');
+                    log('✅ 회원가입→로그인 플로우 완전 성공!', 'success');
+
+                    // 사용자 정보 확인
+                    log('사용자 정보:');
+                    log(`  이름: ${loginResult.user.name}`);
+                    log(`  이메일: ${loginResult.user.email}`);
+                    log(`  인증방식: ${loginResult.user.authMethod || loginResult.method}`);
+
+                } else {
+                    log('❌ 로그인 실패 - 회원가입 후 바로 로그인할 수 없음', 'error');
+                    log('🔍 원인 분석 중...');
+
+                    // 원인 분석
+                    const savedUsers = JSON.parse(localStorage.getItem('lms_users') || '[]');
+                    const savedUser = savedUsers.find(u => u.email === testEmail);
+
+                    if (savedUser) {
+                        log(`저장된 사용자 발견:`);
+                        log(`  authMethod: ${savedUser.authMethod}`);
+                        log(`  password: ${savedUser.password ? '있음' : '없음'}`);
+                    } else {
+                        log('저장된 사용자 없음', 'error');
+                    }
+                }
+
+            } catch (error) {
+                log(`플로우 테스트 오류: ${error.message}`, 'error');
             }
         }
     </script>

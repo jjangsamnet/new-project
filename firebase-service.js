@@ -37,12 +37,13 @@ class FirebaseService {
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
-            // Firestore에 사용자 정보 저장
+            // Firestore에 사용자 정보 저장 (비밀번호 제외 - Firebase Auth에서 관리)
             await db.collection(this.collections.users).doc(user.uid).set({
                 id: user.uid,
                 email: email,
                 name: userData.name,
                 phone: userData.phone,
+                authMethod: 'firebase',
                 registeredAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -52,7 +53,8 @@ class FirebaseService {
                     id: user.uid,
                     email: email,
                     name: userData.name,
-                    phone: userData.phone
+                    phone: userData.phone,
+                    authMethod: 'firebase'
                 }
             };
         } catch (error) {
@@ -98,6 +100,21 @@ class FirebaseService {
         } catch (error) {
             console.error('Firebase 로그아웃 오류:', error);
             return { success: false, error: error.message };
+        }
+    }
+
+    // 모든 사용자 가져오기
+    async getUsers() {
+        if (!this.isFirebaseReady) {
+            return this.fallbackToLocal('getUsers');
+        }
+
+        try {
+            const snapshot = await db.collection(this.collections.users).orderBy('registeredAt').get();
+            return snapshot.docs.map(doc => ({ ...doc.data(), firebaseId: doc.id }));
+        } catch (error) {
+            console.error('사용자 데이터 가져오기 오류:', error);
+            return this.fallbackToLocal('getUsers');
         }
     }
 
@@ -293,6 +310,8 @@ class FirebaseService {
                 return JSON.parse(localStorage.getItem('lms_settings')) || {};
             case 'getCurrentUser':
                 return JSON.parse(localStorage.getItem('lms_current_user')) || null;
+            case 'getUsers':
+                return JSON.parse(localStorage.getItem('lms_users')) || [];
             case 'signIn':
                 return this.localSignIn(args[0], args[1]);
             case 'signUp':
@@ -330,6 +349,8 @@ class FirebaseService {
             email: email,
             name: userData.name,
             phone: userData.phone,
+            password: password,
+            authMethod: 'localStorage',
             registeredAt: new Date().toISOString()
         };
 
