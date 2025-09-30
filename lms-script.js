@@ -4,6 +4,7 @@ class LMSSystem {
     constructor() {
         this.isFirebaseReady = false;
         this.checkFirebaseStatus();
+        this.settings = this.getDefaultSettings();
         this.courses = [
             {
                 id: 1,
@@ -146,13 +147,15 @@ class LMSSystem {
             if (this.isFirebaseReady) {
                 console.log('🔥 Firebase에서 데이터 로드 시작...');
 
-                const [courses, enrollments] = await Promise.all([
+                const [courses, enrollments, settings] = await Promise.all([
                     firebaseService.getCourses(),
-                    firebaseService.getEnrollments()
+                    firebaseService.getEnrollments(),
+                    firebaseService.getSettings()
                 ]);
 
                 console.log(`📚 로드된 강좌 수: ${courses.length}`);
                 console.log(`🎓 로드된 수강신청 수: ${enrollments.length}`);
+                console.log(`⚙️ 로드된 설정:`, settings);
 
                 // Firebase에서 강좌 데이터가 없으면 기본 데이터 사용
                 if (courses.length === 0) {
@@ -166,6 +169,15 @@ class LMSSystem {
                 this.enrollments = enrollments;
                 this.currentUser = await firebaseService.getCurrentUser();
 
+                // 설정 적용
+                if (settings) {
+                    this.settings = { ...this.getDefaultSettings(), ...settings };
+                    console.log('✅ Firebase 설정 데이터 로드 및 적용 완료');
+                } else {
+                    console.log('⚠️ 설정 데이터 없음 - 기본 설정 사용');
+                }
+                this.applySettings();
+
                 // 실시간 리스너 설정
                 this.setupFirebaseListeners();
             } else {
@@ -174,6 +186,12 @@ class LMSSystem {
                 this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
                 this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
                 this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+
+                // 설정 로드 및 적용
+                const localSettings = JSON.parse(localStorage.getItem('lms_settings')) || {};
+                this.settings = { ...this.getDefaultSettings(), ...localSettings };
+                console.log('💾 로컬 설정 로드 완료:', this.settings);
+                this.applySettings();
             }
 
             // 강좌 렌더링
@@ -185,6 +203,13 @@ class LMSSystem {
             this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
             this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
             this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+
+            // 설정도 로컬에서 로드
+            const localSettings = JSON.parse(localStorage.getItem('lms_settings')) || {};
+            this.settings = { ...this.getDefaultSettings(), ...localSettings };
+            console.log('❌ 오류 시 로컬 설정 로드:', this.settings);
+            this.applySettings();
+
             this.renderCourses();
         }
     }
@@ -1081,6 +1106,29 @@ class LMSSystem {
                 console.error('수강신청 실시간 리스너 오류:', error);
             });
 
+            // 설정 데이터 실시간 리스너
+            db.collection('settings').doc('main').onSnapshot((doc) => {
+                console.log('🔄 설정 데이터 실시간 업데이트 감지');
+
+                if (doc.exists) {
+                    const updatedSettings = doc.data();
+                    console.log('⚙️ 설정 데이터 변경됨:', updatedSettings);
+
+                    // 기본 설정과 병합
+                    this.settings = { ...this.getDefaultSettings(), ...updatedSettings };
+
+                    // UI에 새 설정 적용
+                    this.applySettings();
+
+                    // 변경 알림 표시
+                    this.showDataUpdateNotification('페이지 설정이 업데이트되었습니다.');
+                } else {
+                    console.log('⚠️ 설정 문서가 존재하지 않음 - 기본 설정 사용');
+                }
+            }, (error) => {
+                console.error('설정 실시간 리스너 오류:', error);
+            });
+
             console.log('✅ Firebase 실시간 리스너 설정 완료');
 
         } catch (error) {
@@ -1138,6 +1186,93 @@ class LMSSystem {
             notification.style.animation = 'slideOut 0.3s ease-in';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    }
+
+    // 기본 설정값 반환
+    getDefaultSettings() {
+        return {
+            siteTitle: '장삼넷 학습관리시스템',
+            siteDescription: '전문적인 온라인 학습 경험을 제공합니다',
+            contactEmail: 'info@jjangsamnet.com',
+            contactPhone: '02-1234-5678',
+            heroTitle: '미래를 위한 학습, 지금 시작하세요',
+            heroSubtitle: '전문 강사진과 함께하는 체계적인 온라인 교육',
+            heroButton: '강좌 둘러보기',
+            facebookUrl: '',
+            instagramUrl: '',
+            youtubeUrl: '',
+            smtpServer: '',
+            smtpPort: '',
+            senderEmail: ''
+        };
+    }
+
+    // 설정을 UI에 적용
+    applySettings() {
+        console.log('🎨 설정을 UI에 적용 중...', this.settings);
+
+        // 페이지 제목 적용
+        if (this.settings.siteTitle) {
+            document.title = this.settings.siteTitle;
+
+            // 헤더의 사이트 제목 변경
+            const siteTitleElements = document.querySelectorAll('.site-title, .logo-text, h1.title');
+            siteTitleElements.forEach(el => {
+                el.textContent = this.settings.siteTitle;
+            });
+        }
+
+        // 히어로 섹션 적용
+        if (this.settings.heroTitle) {
+            const heroTitleEl = document.querySelector('.hero h1, .hero-title');
+            if (heroTitleEl) heroTitleEl.textContent = this.settings.heroTitle;
+        }
+
+        if (this.settings.heroSubtitle) {
+            const heroSubtitleEl = document.querySelector('.hero p, .hero-subtitle');
+            if (heroSubtitleEl) heroSubtitleEl.textContent = this.settings.heroSubtitle;
+        }
+
+        if (this.settings.heroButton) {
+            const heroButtonEl = document.querySelector('.hero .btn, .hero-button');
+            if (heroButtonEl) heroButtonEl.textContent = this.settings.heroButton;
+        }
+
+        // 연락처 정보 적용
+        if (this.settings.contactEmail) {
+            const emailElements = document.querySelectorAll('.contact-email, [data-email]');
+            emailElements.forEach(el => {
+                el.textContent = this.settings.contactEmail;
+                if (el.href) el.href = `mailto:${this.settings.contactEmail}`;
+            });
+        }
+
+        if (this.settings.contactPhone) {
+            const phoneElements = document.querySelectorAll('.contact-phone, [data-phone]');
+            phoneElements.forEach(el => {
+                el.textContent = this.settings.contactPhone;
+                if (el.href) el.href = `tel:${this.settings.contactPhone}`;
+            });
+        }
+
+        // 소셜 미디어 링크 적용
+        const socialLinks = {
+            facebook: this.settings.facebookUrl,
+            instagram: this.settings.instagramUrl,
+            youtube: this.settings.youtubeUrl
+        };
+
+        Object.entries(socialLinks).forEach(([platform, url]) => {
+            if (url) {
+                const linkEl = document.querySelector(`.social-${platform}, [data-social="${platform}"]`);
+                if (linkEl) {
+                    linkEl.href = url;
+                    linkEl.style.display = 'inline-block';
+                }
+            }
+        });
+
+        console.log('✅ 설정 UI 적용 완료');
     }
 }
 
@@ -1232,6 +1367,26 @@ window.lmsDebug = {
     },
     testNotification: (message = '테스트 알림입니다.') => {
         lms.showDataUpdateNotification(message);
+    },
+    getSettings: () => {
+        console.log('현재 설정 데이터:', lms.settings);
+        return lms.settings;
+    },
+    applySettings: () => {
+        console.log('🎨 설정 수동 적용...');
+        lms.applySettings();
+    },
+    testSettings: async () => {
+        console.log('🧪 설정 테스트 시작...');
+        if (lms.isFirebaseReady) {
+            const settings = await firebaseService.getSettings();
+            console.log('Firebase 설정:', settings);
+            return settings;
+        } else {
+            const settings = JSON.parse(localStorage.getItem('lms_settings') || '{}');
+            console.log('로컬 설정:', settings);
+            return settings;
+        }
     },
     testRegistration: async (email = `test-${Date.now()}@example.com`, password = 'test123') => {
         console.log('🧪 테스트 회원가입 시작:', { email, password });
