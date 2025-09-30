@@ -836,51 +836,58 @@ class AdminSystem {
             video: videoData
         };
 
+        let courseToSave;
         if (this.currentEditingCourse) {
             // 기존 강좌 수정
-            const index = this.courses.findIndex(c => c.id === this.currentEditingCourse.id);
-            this.courses[index] = { ...this.currentEditingCourse, ...formData };
+            courseToSave = { ...this.currentEditingCourse, ...formData };
         } else {
             // 새 강좌 추가
-            const newCourse = {
+            courseToSave = {
                 id: Date.now(),
                 ...formData,
                 rating: 0,
                 students: 0,
                 status: 'active'
             };
-            this.courses.push(newCourse);
         }
 
         try {
+            console.log('💾 강좌 저장 시작:', courseToSave);
+
             // Firebase에 저장
-            const result = await firebaseService.saveCourse(this.currentEditingCourse ?
-                { ...this.courses[index], ...formData } : newCourse);
+            if (this.isFirebaseReady) {
+                const result = await firebaseService.saveCourse(courseToSave);
 
-            if (result.success || !this.isFirebaseReady) {
-                // 로컬 배열 업데이트
-                if (this.currentEditingCourse) {
-                    this.courses[index] = { ...this.currentEditingCourse, ...formData };
+                if (result.success) {
+                    console.log('✅ Firebase 강좌 저장 성공');
                 } else {
-                    this.courses.push(newCourse);
+                    console.error('❌ Firebase 강좌 저장 실패:', result.error);
+                    throw new Error(result.error || 'Firebase 저장 실패');
                 }
-
-                // 로컬 스토리지 백업 (Firebase 사용 불가 시)
-                if (!this.isFirebaseReady) {
-                    this.saveData();
-                }
-
-                this.loadCourses();
-                this.updateStats();
-                this.closeCourseModal();
-
-                alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
             } else {
-                alert('강좌 저장 중 오류가 발생했습니다.');
+                console.log('💾 localStorage 모드 - 로컬 저장만 수행');
             }
+
+            // 로컬 배열 업데이트
+            if (this.currentEditingCourse) {
+                const index = this.courses.findIndex(c => c.id === this.currentEditingCourse.id);
+                this.courses[index] = courseToSave;
+            } else {
+                this.courses.push(courseToSave);
+            }
+
+            // localStorage 백업
+            this.saveData();
+
+            this.loadCourses();
+            this.updateStats();
+            this.closeCourseModal();
+
+            alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
+
         } catch (error) {
             console.error('강좌 저장 오류:', error);
-            alert('강좌 저장 중 오류가 발생했습니다.');
+            alert('강좌 저장 중 오류가 발생했습니다: ' + error.message);
         }
     }
 
@@ -940,7 +947,7 @@ class AdminSystem {
         }
     }
 
-    saveLesson() {
+    async saveLesson() {
         const videoUrl = document.getElementById('lesson-video-url-input').value;
 
         // 영상 데이터 수집
@@ -989,14 +996,30 @@ class AdminSystem {
             this.courses[courseIndex] = this.currentEditingCourse;
         }
 
-        this.saveData();
-        this.loadLessons();
-        this.closeLessonModal();
+        try {
+            // Firebase에 강좌 업데이트 저장 (차시 포함)
+            if (this.isFirebaseReady) {
+                const result = await firebaseService.saveCourse(this.currentEditingCourse);
+                if (!result.success) {
+                    throw new Error(result.error || 'Firebase 저장 실패');
+                }
+                console.log('✅ Firebase 차시 저장 성공');
+            }
 
-        alert(this.currentEditingLesson ? '차시가 수정되었습니다.' : '새 차시가 추가되었습니다.');
+            // localStorage 백업
+            this.saveData();
+            this.loadLessons();
+            this.closeLessonModal();
+
+            alert(this.currentEditingLesson ? '차시가 수정되었습니다.' : '새 차시가 추가되었습니다.');
+
+        } catch (error) {
+            console.error('차시 저장 오류:', error);
+            alert('차시 저장 중 오류가 발생했습니다: ' + error.message);
+        }
     }
 
-    deleteLesson(lessonId) {
+    async deleteLesson(lessonId) {
         if (confirm('이 차시를 삭제하시겠습니까?')) {
             if (this.currentEditingCourse && this.currentEditingCourse.lessons) {
                 this.currentEditingCourse.lessons = this.currentEditingCourse.lessons.filter(l => l.id !== lessonId);
@@ -1007,9 +1030,25 @@ class AdminSystem {
                     this.courses[courseIndex] = this.currentEditingCourse;
                 }
 
-                this.saveData();
-                this.loadLessons();
-                alert('차시가 삭제되었습니다.');
+                try {
+                    // Firebase에 업데이트 저장
+                    if (this.isFirebaseReady) {
+                        const result = await firebaseService.saveCourse(this.currentEditingCourse);
+                        if (!result.success) {
+                            throw new Error(result.error || 'Firebase 저장 실패');
+                        }
+                        console.log('✅ Firebase 차시 삭제 성공');
+                    }
+
+                    // localStorage 백업
+                    this.saveData();
+                    this.loadLessons();
+                    alert('차시가 삭제되었습니다.');
+
+                } catch (error) {
+                    console.error('차시 삭제 오류:', error);
+                    alert('차시 삭제 중 오류가 발생했습니다: ' + error.message);
+                }
             }
         }
     }
@@ -1065,13 +1104,31 @@ class AdminSystem {
     }
 
 
-    deleteCourse(courseId) {
+    async deleteCourse(courseId) {
         if (confirm('이 강좌를 삭제하시겠습니까?')) {
-            this.courses = this.courses.filter(c => c.id !== courseId);
-            this.saveData();
-            this.loadCourses();
-            this.updateStats();
-            alert('강좌가 삭제되었습니다.');
+            try {
+                // Firebase에서 삭제
+                if (this.isFirebaseReady) {
+                    const result = await firebaseService.deleteCourse(courseId);
+                    if (!result.success) {
+                        throw new Error(result.error || 'Firebase 삭제 실패');
+                    }
+                    console.log('✅ Firebase 강좌 삭제 성공');
+                }
+
+                // 로컬 배열에서 삭제
+                this.courses = this.courses.filter(c => c.id !== courseId);
+
+                // localStorage 백업
+                this.saveData();
+                this.loadCourses();
+                this.updateStats();
+                alert('강좌가 삭제되었습니다.');
+
+            } catch (error) {
+                console.error('강좌 삭제 오류:', error);
+                alert('강좌 삭제 중 오류가 발생했습니다: ' + error.message);
+            }
         }
     }
 
