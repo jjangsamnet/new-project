@@ -2,6 +2,7 @@
 
 class LMSSystem {
     constructor() {
+        this.isFirebaseReady = false;
         this.courses = [
             {
                 id: 1,
@@ -119,11 +120,63 @@ class LMSSystem {
             }
         ];
 
-        this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
-        this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
-        this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+        this.users = [];
+        this.currentUser = null;
+        this.enrollments = [];
 
+        this.initializeWithFirebase();
+    }
+
+    async initializeWithFirebase() {
+        // Firebase 서비스 준비 대기
+        await firebaseService.waitForFirebase();
+        this.isFirebaseReady = firebaseService.isFirebaseReady;
+
+        // 데이터 로드
+        await this.loadData();
+
+        // 일반 초기화
         this.init();
+    }
+
+    async loadData() {
+        try {
+            // Firebase에서 데이터 로드
+            if (this.isFirebaseReady) {
+                const [courses, enrollments] = await Promise.all([
+                    firebaseService.getCourses(),
+                    firebaseService.getEnrollments()
+                ]);
+
+                // Firebase에서 강좌 데이터가 없으면 기본 데이터 사용
+                if (courses.length === 0) {
+                    await this.initializeDefaultCourses();
+                } else {
+                    this.courses = courses;
+                }
+
+                this.enrollments = enrollments;
+                this.currentUser = await firebaseService.getCurrentUser();
+            } else {
+                // 로컬 스토리지 폴백
+                this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
+                this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
+                this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+            }
+        } catch (error) {
+            console.error('데이터 로드 오류:', error);
+            // 오류 시 로컬 스토리지 사용
+            this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
+            this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
+            this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+        }
+    }
+
+    async initializeDefaultCourses() {
+        // 기본 강좌 데이터를 Firebase에 저장
+        for (const course of this.courses) {
+            await firebaseService.saveCourse(course);
+        }
     }
 
     init() {
@@ -430,7 +483,7 @@ class LMSSystem {
         document.getElementById('enrollment-modal').style.display = 'block';
     }
 
-    handleEnrollment(e) {
+    async handleEnrollment(e) {
         const courseId = parseInt(document.querySelector('#course-detail-modal .btn-primary').getAttribute('data-course-id'));
         const paymentMethod = e.target.querySelector('select').value;
         const agreeTerms = e.target.querySelector('input[type="checkbox"]').checked;
@@ -455,14 +508,30 @@ class LMSSystem {
             status: 'enrolled'
         };
 
-        this.enrollments.push(enrollment);
-        localStorage.setItem('lms_enrollments', JSON.stringify(this.enrollments));
+        try {
+            // Firebase에 수강신청 저장
+            const result = await firebaseService.saveEnrollment(enrollment);
 
-        // 내 강좌 목록 새로고침
-        this.loadMyCourses();
+            if (result.success || !this.isFirebaseReady) {
+                this.enrollments.push(enrollment);
 
-        alert('수강신청이 완료되었습니다!');
-        this.closeModal('enrollment-modal');
+                // 로컬 스토리지에도 백업 저장 (Firebase 실패 시 대비)
+                if (!this.isFirebaseReady) {
+                    localStorage.setItem('lms_enrollments', JSON.stringify(this.enrollments));
+                }
+
+                // 내 강좌 목록 새로고침
+                await this.loadMyCourses();
+
+                alert('수강신청이 완료되었습니다!');
+                this.closeModal('enrollment-modal');
+            } else {
+                alert('수강신청 중 오류가 발생했습니다.');
+            }
+        } catch (error) {
+            console.error('수강신청 오류:', error);
+            alert('수강신청 중 오류가 발생했습니다.');
+        }
     }
 
     addToWishlist() {
@@ -559,62 +628,67 @@ class LMSSystem {
         `;
     }
 
-    login(email, password) {
-        // 실제 로그인 처리 (임시 구현)
-        const user = this.users.find(u => u.email === email && u.password === password);
+    async login(email, password) {
+        try {
+            const result = await firebaseService.signIn(email, password);
 
-        if (user) {
-            this.currentUser = user;
-            localStorage.setItem('lms_current_user', JSON.stringify(this.currentUser));
+            if (result.success) {
+                this.currentUser = result.user;
+                this.updateAuthUI();
+                await this.loadMyCourses();
+                this.closeAllModals();
+                alert('로그인되었습니다!');
+                return true;
+            } else {
+                alert(result.error || '로그인에 실패했습니다.');
+                return false;
+            }
+        } catch (error) {
+            console.error('로그인 오류:', error);
+            alert('로그인 중 오류가 발생했습니다.');
+            return false;
+        }
+    }
+
+    async register(userData) {
+        try {
+            const result = await firebaseService.signUp(userData.email, userData.password, userData);
+
+            if (result.success) {
+                alert('회원가입이 완료되었습니다!');
+                this.closeAllModals();
+                return true;
+            } else {
+                alert(result.error || '회원가입에 실패했습니다.');
+                return false;
+            }
+        } catch (error) {
+            console.error('회원가입 오류:', error);
+            alert('회원가입 중 오류가 발생했습니다.');
+            return false;
+        }
+    }
+
+    async logout() {
+        try {
+            await firebaseService.signOut();
+            this.currentUser = null;
             this.updateAuthUI();
-            this.loadMyCourses();
-            this.closeAllModals();
-            alert('로그인되었습니다!');
-            return true;
-        } else {
-            alert('이메일 또는 비밀번호가 올바르지 않습니다.');
-            return false;
+            this.showSection('home');
+            alert('로그아웃되었습니다.');
+        } catch (error) {
+            console.error('로그아웃 오류:', error);
+            alert('로그아웃 중 오류가 발생했습니다.');
         }
     }
 
-    register(userData) {
-        // 실제 회원가입 처리 (임시 구현)
-        const existingUser = this.users.find(u => u.email === userData.email);
-
-        if (existingUser) {
-            alert('이미 존재하는 이메일입니다.');
-            return false;
-        }
-
-        const newUser = {
-            id: Date.now(),
-            ...userData,
-            registeredAt: new Date().toISOString()
-        };
-
-        this.users.push(newUser);
-        localStorage.setItem('lms_users', JSON.stringify(this.users));
-
-        alert('회원가입이 완료되었습니다!');
-        this.closeAllModals();
-        return true;
-    }
-
-    logout() {
-        this.currentUser = null;
-        localStorage.removeItem('lms_current_user');
-        this.updateAuthUI();
-        this.showSection('home');
-        alert('로그아웃되었습니다.');
-    }
-
-    handleLogin(e) {
+    async handleLogin(e) {
         const email = e.target.querySelector('input[type="email"]').value;
         const password = e.target.querySelector('input[type="password"]').value;
-        this.login(email, password);
+        await this.login(email, password);
     }
 
-    handleRegister(e) {
+    async handleRegister(e) {
         const userData = {
             name: e.target.querySelector('input[type="text"]').value,
             email: e.target.querySelector('input[type="email"]').value,
@@ -628,7 +702,7 @@ class LMSSystem {
             return;
         }
 
-        this.register(userData);
+        await this.register(userData);
     }
 
     handleContactForm(e) {

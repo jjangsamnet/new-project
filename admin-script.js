@@ -2,10 +2,11 @@
 
 class AdminSystem {
     constructor() {
-        this.courses = JSON.parse(localStorage.getItem('lms_courses')) || this.getDefaultCourses();
-        this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
-        this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
-        this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
+        this.isFirebaseReady = false;
+        this.courses = [];
+        this.users = [];
+        this.enrollments = [];
+        this.settings = {};
         this.currentEditingCourse = null;
         this.currentEditingLesson = null;
         this.isAuthenticated = false;
@@ -16,6 +17,15 @@ class AdminSystem {
             password: '16181618wkd'
         };
 
+        this.initializeWithFirebase();
+    }
+
+    async initializeWithFirebase() {
+        // Firebase 서비스 준비 대기
+        await firebaseService.waitForFirebase();
+        this.isFirebaseReady = firebaseService.isFirebaseReady;
+
+        // 일반 초기화
         this.init();
     }
 
@@ -27,6 +37,45 @@ class AdminSystem {
             this.showAdminDashboard();
         } else {
             this.showLoginForm();
+        }
+    }
+
+    async loadData() {
+        try {
+            if (this.isFirebaseReady) {
+                const [courses, enrollments, settings] = await Promise.all([
+                    firebaseService.getCourses(),
+                    firebaseService.getEnrollments(),
+                    firebaseService.getSettings()
+                ]);
+
+                this.courses = courses.length > 0 ? courses : this.getDefaultCourses();
+                this.enrollments = enrollments;
+                this.settings = settings || this.getDefaultSettings();
+
+                // 초기 데이터가 없으면 기본값 저장
+                if (courses.length === 0) {
+                    for (const course of this.getDefaultCourses()) {
+                        await firebaseService.saveCourse(course);
+                    }
+                }
+                if (!settings) {
+                    await firebaseService.saveSettings(this.getDefaultSettings());
+                }
+            } else {
+                // 로컬 스토리지 폴백
+                this.courses = JSON.parse(localStorage.getItem('lms_courses')) || this.getDefaultCourses();
+                this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
+                this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+                this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
+            }
+        } catch (error) {
+            console.error('데이터 로드 오류:', error);
+            // 오류 시 로컬 스토리지 사용
+            this.courses = JSON.parse(localStorage.getItem('lms_courses')) || this.getDefaultCourses();
+            this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
+            this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+            this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
         }
     }
 
@@ -42,10 +91,15 @@ class AdminSystem {
         this.bindLoginEvents();
     }
 
-    showAdminDashboard() {
+    async showAdminDashboard() {
         document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-dashboard').style.display = 'block';
         this.bindDashboardEvents();
+
+        // 데이터 로드
+        await this.loadData();
+
+        // UI 업데이트
         this.loadDashboard();
         this.loadCourses();
         this.loadUsers();
@@ -727,7 +781,7 @@ class AdminSystem {
         }
     }
 
-    saveCourse() {
+    async saveCourse() {
         const videoUrl = document.getElementById('video-url-input')?.value || '';
 
         // 영상 데이터 수집
@@ -769,12 +823,36 @@ class AdminSystem {
             this.courses.push(newCourse);
         }
 
-        this.saveData();
-        this.loadCourses();
-        this.updateStats();
-        this.closeCourseModal();
+        try {
+            // Firebase에 저장
+            const result = await firebaseService.saveCourse(this.currentEditingCourse ?
+                { ...this.courses[index], ...formData } : newCourse);
 
-        alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
+            if (result.success || !this.isFirebaseReady) {
+                // 로컬 배열 업데이트
+                if (this.currentEditingCourse) {
+                    this.courses[index] = { ...this.currentEditingCourse, ...formData };
+                } else {
+                    this.courses.push(newCourse);
+                }
+
+                // 로컬 스토리지 백업 (Firebase 사용 불가 시)
+                if (!this.isFirebaseReady) {
+                    this.saveData();
+                }
+
+                this.loadCourses();
+                this.updateStats();
+                this.closeCourseModal();
+
+                alert(this.currentEditingCourse ? '강좌가 수정되었습니다.' : '새 강좌가 추가되었습니다.');
+            } else {
+                alert('강좌 저장 중 오류가 발생했습니다.');
+            }
+        } catch (error) {
+            console.error('강좌 저장 오류:', error);
+            alert('강좌 저장 중 오류가 발생했습니다.');
+        }
     }
 
     // 차시 관리 기능들
@@ -1006,27 +1084,44 @@ class AdminSystem {
         }
     }
 
-    saveSettings() {
-        // 설정 값들 수집
-        const newSettings = {
-            siteTitle: document.getElementById('site-title').value,
-            siteDescription: document.getElementById('site-description').value,
-            contactEmail: document.getElementById('contact-email').value,
-            contactPhone: document.getElementById('contact-phone').value,
-            heroTitle: document.getElementById('hero-title').value,
-            heroSubtitle: document.getElementById('hero-subtitle').value,
-            heroButton: document.getElementById('hero-button').value,
-            facebookUrl: document.getElementById('facebook-url').value,
-            instagramUrl: document.getElementById('instagram-url').value,
-            youtubeUrl: document.getElementById('youtube-url').value,
-            smtpServer: document.getElementById('smtp-server').value,
-            smtpPort: document.getElementById('smtp-port').value,
-            senderEmail: document.getElementById('sender-email').value
-        };
+    async saveSettings() {
+        try {
+            // 설정 값들 수집
+            const newSettings = {
+                siteTitle: document.getElementById('site-title').value,
+                siteDescription: document.getElementById('site-description').value,
+                contactEmail: document.getElementById('contact-email').value,
+                contactPhone: document.getElementById('contact-phone').value,
+                heroTitle: document.getElementById('hero-title').value,
+                heroSubtitle: document.getElementById('hero-subtitle').value,
+                heroButton: document.getElementById('hero-button').value,
+                facebookUrl: document.getElementById('facebook-url').value,
+                instagramUrl: document.getElementById('instagram-url').value,
+                youtubeUrl: document.getElementById('youtube-url').value,
+                smtpServer: document.getElementById('smtp-server').value,
+                smtpPort: document.getElementById('smtp-port').value,
+                senderEmail: document.getElementById('sender-email').value
+            };
 
-        this.settings = newSettings;
-        localStorage.setItem('lms_settings', JSON.stringify(this.settings));
-        alert('설정이 저장되었습니다.');
+            // Firebase에 저장
+            const result = await firebaseService.saveSettings(newSettings);
+
+            if (result.success || !this.isFirebaseReady) {
+                this.settings = newSettings;
+
+                // 로컬 스토리지 백업 (Firebase 사용 불가 시)
+                if (!this.isFirebaseReady) {
+                    localStorage.setItem('lms_settings', JSON.stringify(this.settings));
+                }
+
+                alert('설정이 저장되었습니다.');
+            } else {
+                alert('설정 저장 중 오류가 발생했습니다.');
+            }
+        } catch (error) {
+            console.error('설정 저장 오류:', error);
+            alert('설정 저장 중 오류가 발생했습니다.');
+        }
     }
 
     closeCourseModal() {

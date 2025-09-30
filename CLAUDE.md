@@ -46,17 +46,27 @@ This is a multi-page web application system with three main components:
 
 ## Development Commands
 
-This is a static web application. No build, lint, or test commands are available.
+This is a static web application with Firebase backend integration.
 
 **To run the application:**
 - Open `index.html` for Project Management System
 - Open `lms.html` for Learning Management System
 - Open `admin.html` for Admin Dashboard
+- Open `firebase-test.html` for Firebase connection testing
+
+**Firebase Setup:**
+- Firebase project: `lms-26168`
+- Region: `asia-southeast1` (Singapore)
+- Services: Authentication, Firestore, Storage, Analytics
+- Configuration: See `firebase-config.js`
 
 ## Important Implementation Notes
 
-- All data is stored in browser localStorage - no backend required
-- Admin system includes video upload functionality for course lessons
-- Korean language interface throughout the application
-- Cross-page data sharing via localStorage between LMS and Admin systems
-- No external dependencies - pure vanilla JavaScript implementation
+- **Hybrid Data Storage**: Firebase Firestore for cloud data with localStorage fallback
+- **Authentication**: Firebase Authentication with email/password
+- **File Storage**: Firebase Storage for video uploads with Base64 fallback
+- **Offline Support**: Automatic fallback to localStorage when Firebase is unavailable
+- **Admin System**: Includes video upload functionality for course lessons
+- **Korean Language**: Interface throughout the application
+- **Cross-page Data Sharing**: Real-time synchronization via Firebase between LMS and Admin systems
+- **No Build Process**: Pure vanilla JavaScript with Firebase SDK
