@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 디버그 진단</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .debug-section {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Firebase 디버그 진단</h1>
+
+    <button class="btn" onclick="runFullDiagnosis()">전체 진단 실행</button>
+    <button class="btn" onclick="testFirebaseDirectly()">Firebase 직접 테스트</button>
+    <button class="btn" onclick="clearResults()">결과 지우기</button>
+
+    <div id="results"></div>
+
+    <!-- Firebase SDK 로드 -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addResult(title, content, type = 'debug') {
+            const div = document.createElement('div');
+            div.className = `debug-section ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            results.innerHTML = '';
+        }
+
+        async function runFullDiagnosis() {
+            clearResults();
+            addResult('🚀 진단 시작', new Date().toLocaleString());
+
+            // 1. 기본 환경 확인
+            addResult('1️⃣ 브라우저 환경',
+                `User Agent: ${navigator.userAgent}\n` +
+                `온라인 상태: ${navigator.onLine}\n` +
+                `쿠키 활성화: ${navigator.cookieEnabled}\n` +
+                `현재 URL: ${window.location.href}`
+            );
+
+            // 2. Firebase SDK 확인
+            if (typeof firebase !== 'undefined') {
+                addResult('2️⃣ Firebase SDK',
+                    `✅ Firebase SDK 로드됨\n` +
+                    `버전: ${firebase.SDK_VERSION}\n` +
+                    `사용 가능한 앱: ${firebase.apps.length}개\n` +
+                    `앱 목록: ${firebase.apps.map(app => app.name).join(', ')}`,
+                    'success'
+                );
+            } else {
+                addResult('2️⃣ Firebase SDK', '❌ Firebase SDK가 로드되지 않음', 'error');
+                return;
+            }
+
+            // 3. Firebase 설정 직접 테스트
+            const testConfig = {
+                apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
+                authDomain: "lms-26168.firebaseapp.com",
+                databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "lms-26168",
+                storageBucket: "lms-26168.firebasestorage.app",
+                messagingSenderId: "264403082469",
+                appId: "1:264403082469:web:74f35eaec8e2c2f322080c",
+                measurementId: "G-9XGFHD0R9P"
+            };
+
+            addResult('3️⃣ Firebase 설정',
+                `프로젝트 ID: ${testConfig.projectId}\n` +
+                `앱 ID: ${testConfig.appId}\n` +
+                `인증 도메인: ${testConfig.authDomain}\n` +
+                `API 키: ${testConfig.apiKey.substring(0, 10)}...`
+            );
+
+            try {
+                // 4. Firebase 앱 초기화 시도
+                let app;
+                if (firebase.apps.length === 0) {
+                    app = firebase.initializeApp(testConfig);
+                    addResult('4️⃣ Firebase 앱 초기화', '✅ 새 앱 초기화 성공', 'success');
+                } else {
+                    app = firebase.app();
+                    addResult('4️⃣ Firebase 앱 초기화', '✅ 기존 앱 사용', 'success');
+                }
+
+                // 5. Firebase 서비스 초기화
+                const auth = firebase.auth();
+                const db = firebase.firestore();
+                const storage = firebase.storage();
+
+                addResult('5️⃣ Firebase 서비스',
+                    `Auth: ${auth ? '✅' : '❌'}\n` +
+                    `Firestore: ${db ? '✅' : '❌'}\n` +
+                    `Storage: ${storage ? '✅' : '❌'}`,
+                    'success'
+                );
+
+                // 6. Firestore 연결 테스트
+                addResult('6️⃣ Firestore 연결 테스트 시작...', '네트워크 연결 확인 중...');
+
+                try {
+                    await db.enableNetwork();
+                    addResult('6️⃣ Firestore 네트워크', '✅ 네트워크 연결 성공', 'success');
+
+                    // 간단한 읽기 테스트
+                    const testQuery = await db.collection('connection-test').limit(1).get();
+                    addResult('6️⃣ Firestore 읽기 테스트',
+                        `✅ 읽기 테스트 성공\n` +
+                        `쿼리 결과: ${testQuery.size}개 문서\n` +
+                        `빈 컬렉션: ${testQuery.empty ? 'yes' : 'no'}`,
+                        'success'
+                    );
+
+                    // 쓰기 테스트
+                    const testDoc = {
+                        message: 'Firebase 연결 테스트',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        testId: 'debug-test-' + Date.now()
+                    };
+
+                    const writeResult = await db.collection('connection-test').add(testDoc);
+                    addResult('6️⃣ Firestore 쓰기 테스트',
+                        `✅ 쓰기 테스트 성공\n` +
+                        `문서 ID: ${writeResult.id}`,
+                        'success'
+                    );
+
+                } catch (firestoreError) {
+                    addResult('6️⃣ Firestore 오류',
+                        `❌ Firestore 접근 실패\n` +
+                        `오류 코드: ${firestoreError.code}\n` +
+                        `오류 메시지: ${firestoreError.message}\n\n` +
+                        `해결 방법:\n` +
+                        `- Firebase Console > Firestore Database > 규칙에서 보안 규칙 확인\n` +
+                        `- 임시로 'allow read, write: if true;' 규칙 사용`,
+                        'error'
+                    );
+                }
+
+                // 7. 회원가입 테스트
+                addResult('7️⃣ 회원가입 테스트 시작...', '테스트 계정 생성 중...');
+
+                const testEmail = `debug-test-${Date.now()}@example.com`;
+                const testPassword = 'test123456';
+
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(testEmail, testPassword);
+                    const user = userCredential.user;
+
+                    addResult('7️⃣ Firebase Auth 회원가입',
+                        `✅ 회원가입 성공\n` +
+                        `사용자 UID: ${user.uid}\n` +
+                        `이메일: ${user.email}`,
+                        'success'
+                    );
+
+                    // 사용자 정보를 Firestore에 저장 테스트
+                    await db.collection('users').doc(user.uid).set({
+                        id: user.uid,
+                        email: testEmail,
+                        name: '디버그 테스트 사용자',
+                        phone: '010-1234-5678',
+                        authMethod: 'firebase',
+                        registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    addResult('7️⃣ Firestore 사용자 저장', '✅ 사용자 정보 Firestore 저장 성공', 'success');
+
+                    // 즉시 로그인 테스트
+                    await auth.signOut(); // 먼저 로그아웃
+                    const loginResult = await auth.signInWithEmailAndPassword(testEmail, testPassword);
+
+                    addResult('7️⃣ Firebase Auth 로그인',
+                        `✅ 로그인 테스트 성공\n` +
+                        `로그인 사용자: ${loginResult.user.email}`,
+                        'success'
+                    );
+
+                    addResult('🎉 전체 테스트 결과',
+                        `✅ Firebase가 완전히 정상 작동합니다!\n\n` +
+                        `문제가 있다면:\n` +
+                        `1. firebase-config.js 파일의 설정 확인\n` +
+                        `2. firebase-service.js의 waitForFirebase() 함수 확인\n` +
+                        `3. 브라우저 콘솔에서 오류 메시지 확인`,
+                        'success'
+                    );
+
+                } catch (authError) {
+                    addResult('7️⃣ Firebase Auth 오류',
+                        `❌ 인증 실패\n` +
+                        `오류 코드: ${authError.code}\n` +
+                        `오류 메시지: ${authError.message}`,
+                        'error'
+                    );
+                }
+
+            } catch (initError) {
+                addResult('Firebase 초기화 오류',
+                    `❌ Firebase 초기화 실패\n` +
+                    `오류: ${initError.message}\n` +
+                    `스택: ${initError.stack}`,
+                    'error'
+                );
+            }
+        }
+
+        async function testFirebaseDirectly() {
+            clearResults();
+            addResult('직접 테스트 시작', '외부 의존성 없이 Firebase 테스트');
+
+            // firebase-config.js와 firebase-service.js 없이 직접 테스트
+            const directConfig = {
+                apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
+                authDomain: "lms-26168.firebaseapp.com",
+                databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "lms-26168",
+                storageBucket: "lms-26168.firebasestorage.app",
+                messagingSenderId: "264403082469",
+                appId: "1:264403082469:web:74f35eaec8e2c2f322080c",
+                measurementId: "G-9XGFHD0R9P"
+            };
+
+            try {
+                // 기존 앱들 삭제
+                while (firebase.apps.length > 0) {
+                    await firebase.app().delete();
+                }
+
+                const app = firebase.initializeApp(directConfig);
+                const auth = firebase.auth();
+                const db = firebase.firestore();
+
+                addResult('직접 초기화', '✅ Firebase 직접 초기화 성공', 'success');
+
+                // 간단한 Firestore 테스트
+                const testDoc = await db.collection('direct-test').add({
+                    message: '직접 테스트',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                addResult('직접 Firestore 테스트', `✅ 문서 추가 성공: ${testDoc.id}`, 'success');
+
+                addResult('결론',
+                    '✅ Firebase 자체는 정상 작동합니다.\n\n' +
+                    '문제는 firebase-config.js 또는 firebase-service.js의\n' +
+                    '초기화 로직에 있을 가능성이 높습니다.',
+                    'warning'
+                );
+
+            } catch (error) {
+                addResult('직접 테스트 오류',
+                    `❌ 직접 테스트도 실패\n${error.message}`,
+                    'error'
+                );
+            }
+        }
+
+        // 페이지 로드 시 자동 진단
+        document.addEventListener('DOMContentLoaded', () => {
+            addResult('페이지 로드 완료', 'Firebase 디버그 진단 도구 준비됨');
+        });
+    </script>
+</body>
+</html>

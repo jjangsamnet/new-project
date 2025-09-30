@@ -91,9 +91,23 @@ let isFirebaseEnabled = false;
 
 // Firebase 라이브러리 로드 확인 후 초기화
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof firebase !== 'undefined') {
-        isFirebaseEnabled = initializeFirebase();
-    } else {
-        console.log('Firebase SDK가 로드되지 않았습니다. 로컬 모드로 실행됩니다.');
-    }
+    // 약간의 지연을 주어 모든 스크립트가 로드되도록 함
+    setTimeout(() => {
+        console.log('🔧 Firebase 초기화 시도...');
+        console.log('Firebase 객체 존재:', typeof firebase !== 'undefined');
+
+        if (typeof firebase !== 'undefined') {
+            console.log('Firebase SDK 버전:', firebase.SDK_VERSION);
+            isFirebaseEnabled = initializeFirebase();
+            console.log('Firebase 활성화 상태:', isFirebaseEnabled);
+        } else {
+            console.warn('❌ Firebase SDK가 로드되지 않았습니다. 로컬 모드로 실행됩니다.');
+            isFirebaseEnabled = false;
+        }
+
+        // firebaseService가 있다면 상태 업데이트
+        if (typeof firebaseService !== 'undefined') {
+            firebaseService.isFirebaseReady = isFirebaseEnabled;
+        }
+    }, 500); // 500ms 지연
 });

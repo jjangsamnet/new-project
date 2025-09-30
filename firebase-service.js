@@ -390,6 +390,19 @@ const firebaseService = new FirebaseService();
 
 // Firebase 준비 완료 대기
 document.addEventListener('DOMContentLoaded', async () => {
-    await firebaseService.waitForFirebase();
-    console.log('Firebase 서비스 준비 완료:', firebaseService.isFirebaseReady ? 'Firebase 모드' : '로컬 모드');
+    // Firebase 설정 완료까지 좀 더 기다림
+    setTimeout(async () => {
+        console.log('🔥 firebaseService 초기화 시작...');
+        await firebaseService.waitForFirebase();
+        console.log(`🎯 Firebase 서비스 준비 완료: ${firebaseService.isFirebaseReady ? 'Firebase 모드' : '로컬 모드'}`);
+
+        // 전역으로 상태 알림
+        window.firebaseServiceReady = true;
+        window.firebaseServiceMode = firebaseService.isFirebaseReady ? 'firebase' : 'localStorage';
+
+        // 사용자 정의 이벤트 발생
+        document.dispatchEvent(new CustomEvent('firebaseServiceReady', {
+            detail: { isReady: firebaseService.isFirebaseReady }
+        }));
+    }, 1000); // 1초 지연으로 firebase-config.js 초기화 후 실행
 });
