@@ -3,6 +3,7 @@
 class LMSSystem {
     constructor() {
         this.isFirebaseReady = false;
+        this.checkFirebaseStatus();
         this.courses = [
             {
                 id: 1,
@@ -961,6 +962,54 @@ class LMSSystem {
             }
         ];
     }
+
+    // Firebase 상태 확인 및 동기화
+    async checkFirebaseStatus() {
+        console.log('🔍 LMS Firebase 상태 확인 시작...');
+
+        // firebaseService 준비 대기
+        if (typeof firebaseService !== 'undefined') {
+            try {
+                const isReady = await firebaseService.waitForFirebase();
+                this.isFirebaseReady = isReady;
+                console.log(`🎯 LMS Firebase 상태 업데이트: ${this.isFirebaseReady ? 'Firebase 모드' : 'localStorage 모드'}`);
+
+                // 상태 변경 시 알림
+                if (this.isFirebaseReady) {
+                    console.log('✅ Firebase 활성화 - 클라우드 동기화 사용');
+                } else {
+                    console.log('📱 localStorage 모드 - 로컬 저장소만 사용');
+                }
+
+                return this.isFirebaseReady;
+            } catch (error) {
+                console.error('Firebase 상태 확인 오류:', error);
+                this.isFirebaseReady = false;
+                return false;
+            }
+        } else {
+            console.warn('⚠️ firebaseService가 로드되지 않음');
+            this.isFirebaseReady = false;
+            return false;
+        }
+    }
+
+    // Firebase 상태를 수동으로 새로고침
+    async refreshFirebaseStatus() {
+        console.log('🔄 Firebase 상태 수동 새로고침...');
+        const oldStatus = this.isFirebaseReady;
+        const newStatus = await this.checkFirebaseStatus();
+
+        if (oldStatus !== newStatus) {
+            console.log(`🔄 Firebase 상태 변경: ${oldStatus ? 'Firebase' : 'localStorage'} → ${newStatus ? 'Firebase' : 'localStorage'}`);
+
+            // 데이터 다시 로드
+            await this.loadData();
+            this.updateAuthUI();
+        }
+
+        return newStatus;
+    }
 }
 
 // 전역 함수들
@@ -1015,6 +1064,45 @@ const lms = new LMSSystem();
 
 // 페이지 로드 완료 후 초기화
 document.addEventListener('DOMContentLoaded', () => {
-    // 추가 초기화 작업이 필요한 경우 여기에 작성
+    console.log('📱 LMS 페이지 로드 완료');
+
+    // Firebase 서비스 준비 이벤트 리스너
+    document.addEventListener('firebaseServiceReady', async (e) => {
+        console.log('🔥 Firebase 서비스 준비 이벤트 수신:', e.detail);
+        await lms.refreshFirebaseStatus();
+    });
+
+    // 3초 후에도 Firebase 상태가 업데이트되지 않았다면 수동으로 확인
+    setTimeout(async () => {
+        if (!lms.isFirebaseReady) {
+            console.log('⏰ 3초 후 Firebase 상태 재확인...');
+            await lms.refreshFirebaseStatus();
+        }
+    }, 3000);
+
     console.log('LMS 시스템이 초기화되었습니다.');
 });
+
+// 개발자 도구용 전역 디버그 함수들
+window.lmsDebug = {
+    checkFirebaseStatus: () => lms.checkFirebaseStatus(),
+    refreshFirebaseStatus: () => lms.refreshFirebaseStatus(),
+    getFirebaseReady: () => lms.isFirebaseReady,
+    testRegistration: async (email = `test-${Date.now()}@example.com`, password = 'test123') => {
+        console.log('🧪 테스트 회원가입 시작:', { email, password });
+        const result = await lms.register({
+            name: '테스트 사용자',
+            email: email,
+            password: password,
+            phone: '010-1234-5678'
+        });
+        console.log('회원가입 결과:', result);
+        return result;
+    }
+};
+
+console.log('🛠️ 디버그 도구 사용법:');
+console.log('- lmsDebug.checkFirebaseStatus() : Firebase 상태 확인');
+console.log('- lmsDebug.refreshFirebaseStatus() : Firebase 상태 새로고침');
+console.log('- lmsDebug.getFirebaseReady() : 현재 Firebase 상태');
+console.log('- lmsDebug.testRegistration() : 테스트 회원가입 실행');
