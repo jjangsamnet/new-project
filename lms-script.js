@@ -754,7 +754,8 @@ function logout() {
 }
 
 function continueLearning(courseId) {
-    alert('학습 페이지로 이동합니다. (구현 예정)');
+    // 학습 페이지로 이동 (courseId를 URL 파라미터로 전달)
+    window.location.href = `course-learning.html?courseId=${courseId}`;
 }
 
 function viewCourseDetail(courseId) {
