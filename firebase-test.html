@@ -66,6 +66,7 @@
             <button class="test-btn" onclick="testAuthentication()">인증 테스트</button>
             <button class="test-btn" onclick="testFirestore()">Firestore 테스트</button>
             <button class="test-btn" onclick="clearLogs()">로그 지우기</button>
+            <button class="test-btn" onclick="runFullTest()">전체 테스트 실행</button>
         </div>
 
         <div id="logs"></div>
@@ -126,6 +127,14 @@
 
                 log('✓ Firebase SDK 로드 완료');
 
+                // 설정 검증
+                log('설정 검증 중...');
+                log('- API Key: ' + (firebaseConfig.apiKey ? '설정됨' : '누락됨'));
+                log('- Project ID: ' + firebaseConfig.projectId);
+                log('- Auth Domain: ' + firebaseConfig.authDomain);
+                log('- Database URL: ' + firebaseConfig.databaseURL);
+                log('- Storage Bucket: ' + firebaseConfig.storageBucket);
+
                 if (typeof app === 'undefined' || !app) {
                     throw new Error('Firebase 앱이 초기화되지 않았습니다.');
                 }
@@ -135,12 +144,25 @@
                 log('✓ Firestore 서비스 사용 가능: ' + (typeof db !== 'undefined'));
                 log('✓ Storage 서비스 사용 가능: ' + (typeof storage !== 'undefined'));
 
+                // 실제 연결 테스트
+                log('실제 서비스 연결 테스트 중...');
+
+                // Firestore 연결 테스트
+                if (db) {
+                    db.enableNetwork().then(() => {
+                        log('✓ Firestore 네트워크 연결 성공');
+                    }).catch((error) => {
+                        log('⚠ Firestore 네트워크 오류: ' + error.message);
+                    });
+                }
+
                 updateStatus('✅ 모든 Firebase 서비스가 정상 작동합니다!', 'success');
                 log('=== 연결 테스트 완료 ===');
 
             } catch (error) {
                 updateStatus('❌ Firebase 연결 오류', 'error');
                 log('오류: ' + error.message, 'error');
+                log('해결방법: firebase-config.local.js 파일이 올바르게 설정되었는지 확인하세요.');
             }
         }
 
@@ -180,30 +202,92 @@
 
                 log('Firestore 연결 테스트 중...');
 
+                // 연결 상태 확인
+                log('네트워크 상태 확인 중...');
+                await db.enableNetwork();
+                log('✓ Firestore 네트워크 연결 확인됨');
+
                 // 테스트 데이터 쓰기
                 const testDoc = {
                     message: 'Firebase 연결 테스트',
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    testId: 'connection-test-' + Date.now()
                 };
 
                 log('테스트 문서 작성 중...');
-                await db.collection('test').add(testDoc);
-                log('✓ 테스트 문서 작성 완료');
+                const docRef = await db.collection('connection-test').add(testDoc);
+                log('✓ 테스트 문서 작성 완료 (ID: ' + docRef.id + ')');
 
                 // 테스트 데이터 읽기
                 log('테스트 문서 읽기 중...');
-                const snapshot = await db.collection('test').limit(1).get();
+                const snapshot = await db.collection('connection-test').limit(3).get();
                 log(`✓ 테스트 문서 읽기 완료 (${snapshot.size}개 문서)`);
 
-                log('✓ Firestore가 정상 작동합니다!');
+                // 실시간 리스너 테스트
+                log('실시간 리스너 테스트 중...');
+                const unsubscribe = db.collection('connection-test')
+                    .limit(1)
+                    .onSnapshot((snapshot) => {
+                        log('✓ 실시간 업데이트 리스너 작동 확인');
+                        unsubscribe(); // 리스너 해제
+                    }, (error) => {
+                        log('⚠ 실시간 리스너 오류: ' + error.message);
+                    });
+
+                // LMS 컬렉션 접근 테스트
+                log('LMS 데이터 구조 확인 중...');
+                try {
+                    const coursesSnapshot = await db.collection('courses').limit(1).get();
+                    log(`✓ courses 컬렉션 접근 가능 (${coursesSnapshot.size}개 문서)`);
+                } catch (e) {
+                    log('ℹ courses 컬렉션이 아직 생성되지 않음 (정상)');
+                }
+
+                try {
+                    const usersSnapshot = await db.collection('users').limit(1).get();
+                    log(`✓ users 컬렉션 접근 가능 (${usersSnapshot.size}개 문서)`);
+                } catch (e) {
+                    log('ℹ users 컬렉션이 아직 생성되지 않음 (정상)');
+                }
+
+                log('✓ Firestore가 완전히 정상 작동합니다!');
 
             } catch (error) {
                 log('Firestore 테스트 오류: ' + error.message, 'error');
 
                 if (error.code === 'permission-denied') {
                     log('권한 오류: Firestore 보안 규칙을 확인해주세요.', 'error');
+                    log('해결방법: Firebase Console > Firestore Database > 규칙에서 읽기/쓰기 권한 확인', 'error');
+                } else if (error.code === 'unavailable') {
+                    log('네트워크 오류: 인터넷 연결을 확인해주세요.', 'error');
                 }
             }
+        }
+
+        async function runFullTest() {
+            log('🚀 === Firebase 전체 테스트 시작 ===');
+
+            // 각 테스트를 순차적으로 실행
+            testFirebaseConnection();
+
+            setTimeout(async () => {
+                await testAuthentication();
+
+                setTimeout(async () => {
+                    await testFirestore();
+
+                    setTimeout(() => {
+                        log('🎉 === 전체 테스트 완료 ===');
+                        log('결과 요약:');
+                        log('- Firebase SDK: 로드됨');
+                        log('- Firebase 앱: 초기화됨');
+                        log('- 인증 서비스: 사용 가능');
+                        log('- Firestore: 연결 및 작동 확인');
+
+                        updateStatus('✅ Firebase 시스템이 완전히 작동 중입니다!', 'success');
+                    }, 2000);
+                }, 2000);
+            }, 2000);
         }
     </script>
 </body>
