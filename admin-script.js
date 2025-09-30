@@ -463,6 +463,15 @@ class AdminSystem {
             'analytics': '통계 분석'
         };
         document.getElementById('page-title').textContent = titles[sectionId] || '관리자';
+
+        // 설정 페이지일 때 설정 값들을 UI에 렌더링
+        if (sectionId === 'settings') {
+            console.log('📄 설정 페이지 진입 - 설정 렌더링 시작');
+            // 약간의 지연을 두어 DOM이 완전히 준비되도록 함
+            setTimeout(() => {
+                this.renderSettings();
+            }, 100);
+        }
     }
 
     updateStats() {
@@ -589,12 +598,8 @@ class AdminSystem {
     }
 
     loadSettings() {
-        Object.keys(this.settings).forEach(key => {
-            const element = document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
-            if (element) {
-                element.value = this.settings[key];
-            }
-        });
+        console.log('📄 loadSettings() 호출됨 - renderSettings()로 전달');
+        this.renderSettings();
     }
 
     getCategoryName(category) {
@@ -1196,6 +1201,47 @@ class AdminSystem {
             alert.style.animation = 'slideOut 0.3s ease-in';
             setTimeout(() => alert.remove(), 300);
         }, 3000);
+    }
+
+    // 설정 값들을 UI에 렌더링
+    renderSettings() {
+        console.log('🔄 설정 UI 새로고침 시작...');
+        console.log('현재 설정 데이터:', this.settings);
+
+        try {
+            // 각 설정 필드에 값 설정
+            const settingsFields = {
+                'site-title': this.settings.siteTitle || '',
+                'site-description': this.settings.siteDescription || '',
+                'contact-email': this.settings.contactEmail || '',
+                'contact-phone': this.settings.contactPhone || '',
+                'hero-title': this.settings.heroTitle || '',
+                'hero-subtitle': this.settings.heroSubtitle || '',
+                'hero-button': this.settings.heroButton || '',
+                'facebook-url': this.settings.facebookUrl || '',
+                'instagram-url': this.settings.instagramUrl || '',
+                'youtube-url': this.settings.youtubeUrl || '',
+                'smtp-server': this.settings.smtpServer || '',
+                'smtp-port': this.settings.smtpPort || '',
+                'sender-email': this.settings.senderEmail || ''
+            };
+
+            // DOM 요소에 값 설정
+            for (const [fieldId, value] of Object.entries(settingsFields)) {
+                const element = document.getElementById(fieldId);
+                if (element) {
+                    element.value = value;
+                    console.log(`✅ ${fieldId}: "${value}"`);
+                } else {
+                    console.warn(`⚠️ 설정 필드를 찾을 수 없음: ${fieldId}`);
+                }
+            }
+
+            console.log('✅ 설정 UI 새로고침 완료');
+
+        } catch (error) {
+            console.error('❌ 설정 UI 새로고침 오류:', error);
+        }
     }
 
     closeCourseModal() {
