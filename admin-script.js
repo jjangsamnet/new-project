@@ -1085,6 +1085,9 @@ class AdminSystem {
     }
 
     async saveSettings() {
+        console.log('⚙️ 설정 저장 시작...');
+        console.log('Firebase 상태:', this.isFirebaseReady);
+
         try {
             // 설정 값들 수집
             const newSettings = {
@@ -1103,25 +1106,96 @@ class AdminSystem {
                 senderEmail: document.getElementById('sender-email').value
             };
 
-            // Firebase에 저장
-            const result = await firebaseService.saveSettings(newSettings);
+            console.log('💾 저장할 설정 데이터:', newSettings);
 
-            if (result.success || !this.isFirebaseReady) {
-                this.settings = newSettings;
+            let saveSuccess = false;
+            let saveMethod = '';
 
-                // 로컬 스토리지 백업 (Firebase 사용 불가 시)
-                if (!this.isFirebaseReady) {
-                    localStorage.setItem('lms_settings', JSON.stringify(this.settings));
+            // Firebase에 저장 시도
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                console.log('🔥 Firebase로 설정 저장 시도...');
+                try {
+                    const result = await firebaseService.saveSettings(newSettings);
+                    console.log('Firebase 저장 결과:', result);
+
+                    if (result.success) {
+                        saveSuccess = true;
+                        saveMethod = 'Firebase';
+                        console.log('✅ Firebase 설정 저장 성공');
+                    } else {
+                        console.log('❌ Firebase 설정 저장 실패:', result.error || 'Unknown error');
+                    }
+                } catch (firebaseError) {
+                    console.error('Firebase 설정 저장 오류:', firebaseError);
                 }
-
-                alert('설정이 저장되었습니다.');
-            } else {
-                alert('설정 저장 중 오류가 발생했습니다.');
             }
+
+            // Firebase 실패 시 localStorage 폴백
+            if (!saveSuccess) {
+                console.log('💾 localStorage로 설정 저장...');
+                try {
+                    localStorage.setItem('lms_settings', JSON.stringify(newSettings));
+                    saveSuccess = true;
+                    saveMethod = 'localStorage';
+                    console.log('✅ localStorage 설정 저장 성공');
+                } catch (localError) {
+                    console.error('localStorage 설정 저장 오류:', localError);
+                }
+            }
+
+            if (saveSuccess) {
+                this.settings = newSettings;
+                console.log(`🎉 설정 저장 완료 (${saveMethod})`);
+
+                // 성공 메시지 표시
+                this.showSaveSuccess(`설정이 저장되었습니다! (${saveMethod})`);
+
+                // 설정 페이지 새로고침 (저장된 값 표시)
+                this.renderSettings();
+            } else {
+                console.log('❌ 모든 저장 방법 실패');
+                alert('설정 저장 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
+            }
+
         } catch (error) {
-            console.error('설정 저장 오류:', error);
-            alert('설정 저장 중 오류가 발생했습니다.');
+            console.error('설정 저장 전체 오류:', error);
+            alert('설정 저장 중 오류가 발생했습니다: ' + error.message);
         }
+    }
+
+    // 저장 성공 메시지 표시
+    showSaveSuccess(message) {
+        // 기존 알림 제거
+        const existingAlert = document.querySelector('.save-success-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        // 성공 알림 생성
+        const alert = document.createElement('div');
+        alert.className = 'save-success-alert';
+        alert.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        alert.textContent = message;
+
+        document.body.appendChild(alert);
+
+        // 3초 후 제거
+        setTimeout(() => {
+            alert.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => alert.remove(), 300);
+        }, 3000);
     }
 
     closeCourseModal() {
@@ -1283,6 +1357,98 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth <= 768) {
         document.querySelector('.sidebar').classList.remove('open');
     }
+
+    // 관리자 디버그 도구 추가
+    window.adminDebug = {
+        getFirebaseStatus: () => {
+            console.log('=== 관리자 Firebase 상태 ===');
+            console.log('admin.isFirebaseReady:', admin.isFirebaseReady);
+            console.log('firebaseService.isFirebaseReady:', firebaseService?.isFirebaseReady);
+            console.log('window.firebaseServiceReady:', window.firebaseServiceReady);
+            console.log('window.firebaseServiceMode:', window.firebaseServiceMode);
+            console.log('Firebase 서비스 객체:', typeof firebaseService);
+            return {
+                adminReady: admin.isFirebaseReady,
+                serviceReady: firebaseService?.isFirebaseReady,
+                windowReady: window.firebaseServiceReady,
+                mode: window.firebaseServiceMode
+            };
+        },
+
+        testSettingsSave: async () => {
+            console.log('=== 설정 저장 테스트 ===');
+            const testSettings = {
+                siteTitle: 'Test Title ' + Date.now(),
+                siteDescription: 'Test Description',
+                contactEmail: 'test@example.com',
+                contactPhone: '010-1234-5678'
+            };
+
+            console.log('테스트 설정 데이터:', testSettings);
+
+            try {
+                if (firebaseService && admin.isFirebaseReady) {
+                    const result = await firebaseService.saveSettings(testSettings);
+                    console.log('Firebase 저장 결과:', result);
+                    return result;
+                } else {
+                    console.log('Firebase 비활성화 - localStorage 테스트');
+                    localStorage.setItem('lms_settings', JSON.stringify(testSettings));
+                    return { success: true, method: 'localStorage' };
+                }
+            } catch (error) {
+                console.error('설정 저장 테스트 오류:', error);
+                return { success: false, error: error.message };
+            }
+        },
+
+        checkSettingsElements: () => {
+            console.log('=== 설정 폼 요소 확인 ===');
+            const elements = {
+                siteTitle: document.getElementById('site-title'),
+                siteDescription: document.getElementById('site-description'),
+                contactEmail: document.getElementById('contact-email'),
+                contactPhone: document.getElementById('contact-phone')
+            };
+
+            for (const [key, element] of Object.entries(elements)) {
+                console.log(`${key}:`, element ? `값="${element.value}"` : '요소 없음');
+            }
+            return elements;
+        },
+
+        getCurrentSettings: () => {
+            console.log('=== 현재 설정 확인 ===');
+            console.log('admin.settings:', admin.settings);
+
+            if (admin.isFirebaseReady) {
+                firebaseService.getSettings().then(settings => {
+                    console.log('Firebase 설정:', settings);
+                });
+            }
+
+            const localSettings = JSON.parse(localStorage.getItem('lms_settings') || '{}');
+            console.log('localStorage 설정:', localSettings);
+
+            return {
+                admin: admin.settings,
+                localStorage: localSettings
+            };
+        },
+
+        refreshData: async () => {
+            console.log('=== 데이터 새로고침 ===');
+            try {
+                await admin.loadData();
+                console.log('✅ 데이터 새로고침 완료');
+                console.log('새로운 설정:', admin.settings);
+            } catch (error) {
+                console.error('❌ 데이터 새로고침 실패:', error);
+            }
+        }
+    };
+
+    console.log('🔧 관리자 디버그 도구가 추가되었습니다. adminDebug 객체를 사용하세요.');
 });
 
 // 윈도우 리사이즈 이벤트

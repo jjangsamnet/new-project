@@ -55,6 +55,8 @@ service cloud.firestore {
 }
 ```
 
+**중요**: 설정 저장 문제가 있다면 위의 테스트용 규칙을 먼저 적용해보세요.
+
 #### 프로덕션용 규칙 (보안 강화)
 ```javascript
 rules_version = '2';
@@ -74,6 +76,11 @@ service cloud.firestore {
     // 수강신청 문서 - 인증된 사용자만 접근
     match /enrollments/{enrollmentId} {
       allow read, write: if request.auth != null;
+    }
+
+    // 설정 문서 - 모든 접근 허용 (관리자 기능)
+    match /settings/{settingId} {
+      allow read, write: if true;
     }
 
     // 연결 테스트 문서 - 모든 접근 허용

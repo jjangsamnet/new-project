@@ -283,19 +283,53 @@ class FirebaseService {
     }
 
     async saveSettings(settingsData) {
+        console.log('🔥 firebaseService.saveSettings 호출');
+        console.log('Firebase 준비 상태:', this.isFirebaseReady);
+        console.log('저장할 데이터:', settingsData);
+
         if (!this.isFirebaseReady) {
+            console.log('❌ Firebase 비활성화 - 로컬 저장으로 폴백');
             return this.fallbackToLocal('saveSettings', arguments);
         }
 
         try {
-            await db.collection(this.collections.settings).doc('main').set({
+            console.log('📝 Firestore settings 컬렉션에 저장 시도...');
+
+            // 컬렉션 및 문서 참조 확인
+            if (!db) {
+                console.error('❌ Firestore 데이터베이스 객체가 없음');
+                return { success: false, error: 'Firestore database not available' };
+            }
+
+            const settingsRef = db.collection(this.collections.settings).doc('main');
+            console.log('문서 경로:', `${this.collections.settings}/main`);
+
+            const dataToSave = {
                 ...settingsData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+            };
+
+            console.log('최종 저장 데이터:', dataToSave);
+
+            await settingsRef.set(dataToSave, { merge: true });
+
+            console.log('✅ Firestore 설정 저장 성공');
             return { success: true };
+
         } catch (error) {
-            console.error('설정 저장 오류:', error);
-            return { success: false, error: error.message };
+            console.error('❌ 설정 저장 오류:', error);
+            console.error('오류 코드:', error.code);
+            console.error('오류 메시지:', error.message);
+
+            // 구체적인 오류 정보 제공
+            let errorMessage = error.message;
+            if (error.code === 'permission-denied') {
+                errorMessage = 'Firestore 권한 오류 - 보안 규칙을 확인해주세요';
+            } else if (error.code === 'unavailable') {
+                errorMessage = 'Firestore 서비스 연결 실패 - 네트워크를 확인해주세요';
+            }
+
+            return { success: false, error: errorMessage };
         }
     }
 
@@ -342,6 +376,11 @@ class FirebaseService {
                 return this.localSignUp(args[0], args[1], args[2]);
             case 'signOut':
                 localStorage.removeItem('lms_current_user');
+                return { success: true };
+            case 'saveSettings':
+                console.log('💾 localStorage로 설정 저장 (Firebase 폴백)');
+                const settingsData = args[0];
+                localStorage.setItem('lms_settings', JSON.stringify(settingsData));
                 return { success: true };
             default:
                 return { success: false, error: '지원되지 않는 로컬 작업입니다.' };
