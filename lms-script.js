@@ -226,6 +226,14 @@ class LMSSystem {
             });
         }
 
+        const passwordResetForm = document.getElementById('password-reset-form');
+        if (passwordResetForm) {
+            passwordResetForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handlePasswordReset(e);
+            });
+        }
+
         document.querySelector('.contact-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleContactForm(e);
@@ -351,6 +359,15 @@ class LMSSystem {
     showRegister() {
         this.closeAllModals();
         document.getElementById('register-modal').style.display = 'block';
+    }
+
+    showPasswordReset() {
+        this.closeAllModals();
+        document.getElementById('password-reset-modal').style.display = 'block';
+        // 폼 리셋 및 성공 메시지 숨김
+        document.getElementById('password-reset-form').style.display = 'block';
+        document.getElementById('reset-success').style.display = 'none';
+        document.getElementById('reset-email').value = '';
     }
 
     closeModal(modalId) {
@@ -705,6 +722,62 @@ class LMSSystem {
         await this.register(userData);
     }
 
+    async handlePasswordReset(e) {
+        const email = e.target.querySelector('input[type="email"]').value.trim();
+
+        if (!email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+
+        // 이메일 형식 검증
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+            alert('올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+
+        try {
+            // Firebase Authentication 비밀번호 재설정
+            if (this.isFirebaseReady && auth) {
+                await auth.sendPasswordResetEmail(email);
+                console.log('Firebase를 통한 비밀번호 재설정 이메일 전송 완료');
+            } else {
+                // 로컬 모드에서의 시뮬레이션
+                console.log('로컬 모드: 비밀번호 재설정 이메일 전송 시뮬레이션');
+
+                // 등록된 사용자인지 확인
+                const userExists = this.users.some(user => user.email === email);
+                if (!userExists) {
+                    alert('등록되지 않은 이메일입니다.');
+                    return;
+                }
+            }
+
+            // 성공 UI 표시
+            this.showPasswordResetSuccess();
+
+        } catch (error) {
+            console.error('비밀번호 재설정 오류:', error);
+
+            if (error.code === 'auth/user-not-found') {
+                alert('등록되지 않은 이메일입니다.');
+            } else if (error.code === 'auth/invalid-email') {
+                alert('올바르지 않은 이메일 형식입니다.');
+            } else if (error.code === 'auth/too-many-requests') {
+                alert('너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.');
+            } else {
+                alert('비밀번호 재설정 중 오류가 발생했습니다. 다시 시도해주세요.');
+            }
+        }
+    }
+
+    showPasswordResetSuccess() {
+        // 폼 숨기고 성공 메시지 표시
+        document.getElementById('password-reset-form').style.display = 'none';
+        document.getElementById('reset-success').style.display = 'block';
+    }
+
     handleContactForm(e) {
         alert('문의가 접수되었습니다. 빠른 시일 내에 답변드리겠습니다.');
         e.target.reset();
@@ -731,6 +804,10 @@ function showLogin() {
 
 function showRegister() {
     lms.showRegister();
+}
+
+function showPasswordReset() {
+    lms.showPasswordReset();
 }
 
 function closeModal(modalId) {

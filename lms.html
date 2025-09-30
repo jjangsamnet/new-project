@@ -167,6 +167,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">로그인</button>
                 <div class="auth-links">
+                    <a href="#" onclick="showPasswordReset()">비밀번호를 잊으셨나요?</a>
                     <a href="#" onclick="showRegister()">계정이 없으신가요? 회원가입</a>
                 </div>
             </form>
@@ -208,6 +209,40 @@
                     <a href="#" onclick="showLogin()">이미 계정이 있으신가요? 로그인</a>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 비밀번호 재설정 모달 -->
+    <div id="password-reset-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>비밀번호 재설정</h2>
+                <span class="close" onclick="closeModal('password-reset-modal')">&times;</span>
+            </div>
+            <form class="auth-form" id="password-reset-form">
+                <div class="form-group">
+                    <label for="reset-email">이메일 주소</label>
+                    <input type="email" id="reset-email" placeholder="가입하신 이메일을 입력하세요" required>
+                </div>
+                <div class="reset-info">
+                    <p>📧 입력하신 이메일로 비밀번호 재설정 링크를 보내드립니다.</p>
+                    <p>메일이 오지 않는다면 스팸함도 확인해 주세요.</p>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">재설정 링크 전송</button>
+                <div class="auth-links">
+                    <a href="#" onclick="showLogin()">로그인으로 돌아가기</a>
+                    <a href="#" onclick="showRegister()">계정이 없으신가요? 회원가입</a>
+                </div>
+            </form>
+
+            <!-- 성공 메시지 (초기에는 숨김) -->
+            <div class="reset-success" id="reset-success" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h3>재설정 링크를 전송했습니다!</h3>
+                <p>입력하신 이메일 주소로 비밀번호 재설정 링크를 보내드렸습니다.</p>
+                <p>메일을 확인하고 링크를 클릭하여 새 비밀번호를 설정하세요.</p>
+                <button class="btn btn-outline" onclick="closeModal('password-reset-modal')">확인</button>
+            </div>
         </div>
     </div>
 

@@ -811,3 +811,79 @@ section {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* 비밀번호 재설정 모달 */
+.reset-info {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.reset-info p {
+    margin: 5px 0;
+    color: #1976d2;
+}
+
+.reset-success {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.reset-success .success-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    animation: successPulse 0.6s ease-out;
+}
+
+.reset-success h3 {
+    color: #28a745;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.reset-success p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    color: #666;
+}
+
+.auth-links {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-links a {
+    display: block;
+    margin: 8px 0;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+.auth-links a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.auth-links a:first-child {
+    font-weight: 600;
+}
+
+@keyframes successPulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
