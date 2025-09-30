@@ -754,8 +754,13 @@ function logout() {
 }
 
 function continueLearning(courseId) {
+    console.log('continueLearning 함수 호출됨, courseId:', courseId);
+
     // 학습 페이지로 이동 (courseId를 URL 파라미터로 전달)
-    window.location.href = `course-learning.html?courseId=${courseId}`;
+    const url = `course-learning.html?courseId=${courseId}`;
+    console.log('이동할 URL:', url);
+
+    window.location.href = url;
 }
 
 function viewCourseDetail(courseId) {
