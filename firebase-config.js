@@ -1,16 +1,23 @@
 // Firebase 설정 파일
 // 실제 사용 시에는 Firebase Console에서 생성한 설정값으로 교체해야 합니다.
 
+// Firebase 설정 - 실제 값으로 교체 필요
+// firebase-config.local.js 파일을 생성하거나 환경 변수 사용
 const firebaseConfig = {
-    apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
-    authDomain: "lms-26168.firebaseapp.com",
-    databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "lms-26168",
-    storageBucket: "lms-26168.firebasestorage.app",
-    messagingSenderId: "264403082469",
-    appId: "1:264403082469:web:ccc553057db178fb22080c",
-    measurementId: "G-ZSE5YGGNBF"
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "your-project.firebaseapp.com",
+    databaseURL: "https://your-project-default-rtdb.region.firebasedatabase.app",
+    projectId: "your-project-id",
+    storageBucket: "your-project.firebasestorage.app",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
+    measurementId: "YOUR_MEASUREMENT_ID"
 };
+
+// 로컬 설정 파일이 있다면 사용 (개발용)
+if (typeof firebaseConfigLocal !== 'undefined') {
+    Object.assign(firebaseConfig, firebaseConfigLocal);
+}
 
 // Firebase 초기화
 let app, auth, db, storage, analytics;

@@ -54,11 +54,28 @@ This is a static web application with Firebase backend integration.
 - Open `admin.html` for Admin Dashboard
 - Open `firebase-test.html` for Firebase connection testing
 
-**Firebase Setup:**
-- Firebase project: `lms-26168`
-- Region: `asia-southeast1` (Singapore)
-- Services: Authentication, Firestore, Storage, Analytics
-- Configuration: See `firebase-config.js`
+**Firebase Setup (Security Important!):**
+
+⚠️ **SECURITY WARNING**: Never commit real API keys to the repository!
+
+1. **Copy the configuration template:**
+   ```bash
+   cp firebase-config.example.js firebase-config.local.js
+   ```
+
+2. **Edit `firebase-config.local.js` with your actual Firebase project settings:**
+   - Get configuration from Firebase Console → Project Settings → General → Your apps
+   - Replace all placeholder values with real ones
+
+3. **Recommended Firebase project setup:**
+   - Region: `asia-southeast1` (Singapore) or your preferred region
+   - Services: Authentication, Firestore, Storage, Analytics
+   - Security Rules: Configure appropriate read/write permissions
+
+4. **Files to configure:**
+   - `firebase-config.local.js` (your actual config - NOT committed to git)
+   - `firebase-config.js` (template file - safe to commit)
+   - `firebase-config.example.js` (example file for developers)
 
 ## Important Implementation Notes
 

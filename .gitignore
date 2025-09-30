@@ -11,3 +11,19 @@ Thumbs.db
 
 # 임시 파일
 *.tmp
+
+# Firebase 실제 설정 파일들 (보안상 제외)
+firebase-config.local.js
+firebase-config.prod.js
+
+# 환경 변수 파일들
+.env
+.env.local
+.env.production
+.env.development
+
+# API 키 및 비밀 정보
+config/secrets.js
+secrets/
+*.key
+*.pem

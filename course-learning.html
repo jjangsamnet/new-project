@@ -246,6 +246,8 @@
 
     <!-- Firebase 설정 -->
     <script src="firebase-config.js"></script>
+    <!-- 로컬 Firebase 설정 (존재하는 경우) -->
+    <script src="firebase-config.local.js" onerror="console.log('로컬 Firebase 설정 파일이 없습니다. 개발 모드에서는 firebase-config.local.js를 생성하세요.')"></script>
     <script src="firebase-service.js"></script>
 
     <!-- 학습 페이지 스크립트 -->
