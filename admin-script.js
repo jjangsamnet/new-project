@@ -367,6 +367,12 @@ class AdminSystem {
             this.saveCourse();
         });
 
+        // 차시 폼 이벤트
+        document.getElementById('lesson-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveLesson();
+        });
+
         // 모달 외부 클릭 이벤트
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
@@ -722,7 +728,7 @@ class AdminSystem {
     }
 
     saveCourse() {
-        const videoUrl = document.getElementById('video-url-input').value;
+        const videoUrl = document.getElementById('video-url-input')?.value || '';
 
         // 영상 데이터 수집
         let videoData = null;
@@ -951,13 +957,6 @@ class AdminSystem {
         if (videoFileInput) videoFileInput.value = '';
     }
 
-    showAddCourseModal() {
-        this.currentEditingCourse = null;
-        this.resetVideoUpload();
-        document.getElementById('course-modal-title').textContent = '새 강좌 추가';
-        document.getElementById('course-form').reset();
-        document.getElementById('course-modal').style.display = 'block';
-    }
 
     deleteCourse(courseId) {
         if (confirm('이 강좌를 삭제하시겠습니까?')) {
@@ -1039,10 +1038,15 @@ class AdminSystem {
     resetVideoUpload() {
         // 비디오 업로드 상태 초기화
         this.currentVideoData = null;
-        document.getElementById('video-upload-area').style.display = 'block';
-        document.getElementById('video-preview').style.display = 'none';
-        document.getElementById('video-url-input').value = '';
-        document.getElementById('video-file-input').value = '';
+        const videoUploadArea = document.getElementById('video-upload-area');
+        const videoPreview = document.getElementById('video-preview');
+        const videoUrlInput = document.getElementById('video-url-input');
+        const videoFileInput = document.getElementById('video-file-input');
+
+        if (videoUploadArea) videoUploadArea.style.display = 'block';
+        if (videoPreview) videoPreview.style.display = 'none';
+        if (videoUrlInput) videoUrlInput.value = '';
+        if (videoFileInput) videoFileInput.value = '';
     }
 
     exportUsers() {
