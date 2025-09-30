@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 실시간 상태 모니터</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status-card {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .status-ok { border-color: #28a745; background: #d4edda; }
+        .status-warning { border-color: #ffc107; background: #fff3cd; }
+        .status-error { border-color: #dc3545; background: #f8d7da; }
+        .status-info { border-color: #17a2b8; background: #d1ecf1; }
+        .test-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .test-btn:hover { background: #0056b3; }
+        .test-btn.danger { background: #dc3545; }
+        .test-btn.success { background: #28a745; }
+        .console-output {
+            background: #1e1e1e;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .auto-refresh {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auto-refresh" id="auto-refresh">자동 새로고침: 꺼짐</div>
+
+    <div class="container">
+        <h1>🔥 Firebase 실시간 상태 모니터</h1>
+        <p>Firebase 연결 상태와 서비스 동작을 실시간으로 모니터링합니다.</p>
+
+        <div class="controls">
+            <button class="test-btn success" onclick="startMonitoring()">모니터링 시작</button>
+            <button class="test-btn danger" onclick="stopMonitoring()">모니터링 중지</button>
+            <button class="test-btn" onclick="refreshStatus()">수동 새로고침</button>
+            <button class="test-btn" onclick="testRegistration()">회원가입 테스트</button>
+            <button class="test-btn" onclick="clearConsole()">콘솔 지우기</button>
+        </div>
+    </div>
+
+    <!-- Firebase 상태 카드들 -->
+    <div class="container">
+        <h2>📊 서비스 상태</h2>
+        <div id="firebase-sdk-status" class="status-card status-info">
+            <h3>Firebase SDK</h3>
+            <div id="sdk-details">확인 중...</div>
+        </div>
+
+        <div id="firebase-config-status" class="status-card status-info">
+            <h3>Firebase 설정</h3>
+            <div id="config-details">확인 중...</div>
+        </div>
+
+        <div id="firebase-services-status" class="status-card status-info">
+            <h3>Firebase 서비스</h3>
+            <div id="services-details">확인 중...</div>
+        </div>
+
+        <div id="firestore-status" class="status-card status-info">
+            <h3>Firestore 연결</h3>
+            <div id="firestore-details">확인 중...</div>
+        </div>
+
+        <div id="auth-status" class="status-card status-info">
+            <h3>Firebase Auth</h3>
+            <div id="auth-details">확인 중...</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🖥️ 실시간 콘솔 로그</h2>
+        <div id="console-output" class="console-output">콘솔 로그가 여기에 표시됩니다...\n</div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+    <!-- Firebase 설정 -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-service.js"></script>
+
+    <script>
+        let monitoringInterval = null;
+        let consoleOutput = document.getElementById('console-output');
+
+        // 콘솔 로그 캡처
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function logToConsole(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.join(' ');
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : 'ℹ️';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog.apply(console, args);
+            logToConsole('log', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalWarn.apply(console, args);
+            logToConsole('warn', ...args);
+        };
+
+        console.error = (...args) => {
+            originalError.apply(console, args);
+            logToConsole('error', ...args);
+        };
+
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+
+        function updateStatusCard(cardId, status, details) {
+            const card = document.getElementById(cardId);
+            const detailsDiv = card.querySelector('div');
+
+            card.className = `status-card status-${status}`;
+            detailsDiv.innerHTML = details;
+        }
+
+        async function checkFirebaseStatus() {
+            console.log('🔍 Firebase 상태 검사 시작...');
+
+            // 1. Firebase SDK 검사
+            if (typeof firebase !== 'undefined') {
+                updateStatusCard('firebase-sdk-status', 'ok', '✅ Firebase SDK 로드됨<br>버전: ' + firebase.SDK_VERSION);
+            } else {
+                updateStatusCard('firebase-sdk-status', 'error', '❌ Firebase SDK 로드되지 않음');
+                return;
+            }
+
+            // 2. Firebase 설정 검사
+            if (typeof firebaseConfig !== 'undefined') {
+                updateStatusCard('firebase-config-status', 'ok',
+                    `✅ 설정 로드됨<br>프로젝트: ${firebaseConfig.projectId}<br>도메인: ${firebaseConfig.authDomain}`);
+            } else {
+                updateStatusCard('firebase-config-status', 'error', '❌ Firebase 설정 없음');
+                return;
+            }
+
+            // 3. Firebase 서비스 초기화 상태
+            if (typeof isFirebaseEnabled !== 'undefined' && isFirebaseEnabled) {
+                let serviceDetails = '✅ Firebase 초기화됨<br>';
+                serviceDetails += `앱: ${typeof app !== 'undefined' ? '✅' : '❌'}<br>`;
+                serviceDetails += `인증: ${typeof auth !== 'undefined' ? '✅' : '❌'}<br>`;
+                serviceDetails += `Firestore: ${typeof db !== 'undefined' ? '✅' : '❌'}<br>`;
+                serviceDetails += `Storage: ${typeof storage !== 'undefined' ? '✅' : '❌'}`;
+                updateStatusCard('firebase-services-status', 'ok', serviceDetails);
+            } else {
+                updateStatusCard('firebase-services-status', 'error', '❌ Firebase 초기화되지 않음');
+                return;
+            }
+
+            // 4. Firestore 연결 테스트
+            if (typeof db !== 'undefined') {
+                try {
+                    await db.enableNetwork();
+                    const testDoc = await db.collection('connection-test').limit(1).get();
+                    updateStatusCard('firestore-status', 'ok',
+                        `✅ Firestore 연결 성공<br>테스트 쿼리: ${testDoc.size}개 문서`);
+                } catch (error) {
+                    updateStatusCard('firestore-status', 'warning',
+                        `⚠️ Firestore 접근 제한<br>오류: ${error.code}<br>메시지: ${error.message}`);
+                }
+            } else {
+                updateStatusCard('firestore-status', 'error', '❌ Firestore 서비스 없음');
+            }
+
+            // 5. Firebase Auth 상태
+            if (typeof auth !== 'undefined') {
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        updateStatusCard('auth-status', 'ok',
+                            `✅ 로그인됨<br>사용자: ${user.email}<br>UID: ${user.uid}`);
+                    } else {
+                        updateStatusCard('auth-status', 'warning', '⚠️ 로그인되지 않음');
+                    }
+                });
+            } else {
+                updateStatusCard('auth-status', 'error', '❌ Auth 서비스 없음');
+            }
+
+            console.log('✅ Firebase 상태 검사 완료');
+        }
+
+        function startMonitoring() {
+            if (monitoringInterval) return;
+
+            monitoringInterval = setInterval(() => {
+                checkFirebaseStatus();
+            }, 5000);
+
+            document.getElementById('auto-refresh').textContent = '자동 새로고침: 켜짐 (5초마다)';
+            console.log('🔄 자동 모니터링 시작');
+            checkFirebaseStatus(); // 즉시 한 번 실행
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                document.getElementById('auto-refresh').textContent = '자동 새로고침: 꺼짐';
+                console.log('⏹️ 자동 모니터링 중지');
+            }
+        }
+
+        function refreshStatus() {
+            console.log('🔄 수동 새로고침 시작');
+            checkFirebaseStatus();
+        }
+
+        async function testRegistration() {
+            console.log('🧪 회원가입 테스트 시작');
+
+            const testEmail = `test-${Date.now()}@example.com`;
+            const testPassword = 'test123';
+
+            console.log(`테스트 계정: ${testEmail} / ${testPassword}`);
+
+            if (typeof firebaseService !== 'undefined') {
+                try {
+                    const result = await firebaseService.signUp(testEmail, testPassword, {
+                        name: '테스트 사용자',
+                        phone: '010-1234-5678'
+                    });
+
+                    if (result.success) {
+                        console.log('✅ 회원가입 테스트 성공!', result);
+
+                        // 즉시 로그인 테스트
+                        const loginResult = await firebaseService.signIn(testEmail, testPassword);
+                        if (loginResult.success) {
+                            console.log('✅ 로그인 테스트도 성공!');
+                        } else {
+                            console.error('❌ 로그인 테스트 실패:', loginResult.error);
+                        }
+                    } else {
+                        console.error('❌ 회원가입 테스트 실패:', result.error);
+                    }
+                } catch (error) {
+                    console.error('❌ 테스트 중 오류:', error);
+                }
+            } else {
+                console.error('❌ firebaseService가 없습니다');
+            }
+        }
+
+        // 페이지 로드 시 상태 확인
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Firebase 상태 모니터 시작');
+            checkFirebaseStatus();
+        });
+
+        // Firebase 서비스 준비 대기
+        if (typeof firebaseService !== 'undefined') {
+            firebaseService.waitForFirebase().then((isReady) => {
+                console.log('Firebase 서비스 준비 완료:', isReady);
+                checkFirebaseStatus();
+            });
+        }
+    </script>
+</body>
+</html>

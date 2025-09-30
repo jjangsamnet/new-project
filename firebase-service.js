@@ -15,14 +15,38 @@ class FirebaseService {
     // Firebase 준비 상태 확인
     async waitForFirebase() {
         return new Promise((resolve) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5초 최대 대기
+
             const checkFirebase = () => {
+                attempts++;
+
                 if (typeof isFirebaseEnabled !== 'undefined') {
                     this.isFirebaseReady = isFirebaseEnabled;
-                    resolve(this.isFirebaseReady);
+                    console.log(`🔥 Firebase 상태 확인 (${attempts}회 시도):`, this.isFirebaseReady ? '활성화' : '비활성화');
+
+                    if (this.isFirebaseReady) {
+                        // 추가 확인: 실제 Firebase 서비스 접근 가능한지
+                        if (typeof auth !== 'undefined' && typeof db !== 'undefined') {
+                            console.log('✅ Firebase 서비스 모두 준비됨');
+                            resolve(true);
+                        } else {
+                            console.warn('⚠️ Firebase 변수는 true이지만 서비스가 없음');
+                            this.isFirebaseReady = false;
+                            resolve(false);
+                        }
+                    } else {
+                        resolve(false);
+                    }
+                } else if (attempts >= maxAttempts) {
+                    console.warn('⏰ Firebase 상태 확인 시간 초과');
+                    this.isFirebaseReady = false;
+                    resolve(false);
                 } else {
                     setTimeout(checkFirebase, 100);
                 }
             };
+
             checkFirebase();
         });
     }
