@@ -25,6 +25,12 @@ let app, auth, db, storage, analytics;
 // Firebase 초기화 함수
 function initializeFirebase() {
     try {
+        // 설정 유효성 검사
+        if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+            console.warn('Firebase 설정이 기본값입니다. firebase-config.local.js를 생성하여 실제 설정을 사용하세요.');
+            return false;
+        }
+
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         db = firebase.firestore();
@@ -37,6 +43,7 @@ function initializeFirebase() {
 
         console.log('Firebase가 성공적으로 초기화되었습니다.');
         console.log('프로젝트:', firebaseConfig.projectId);
+        console.log('앱 ID:', firebaseConfig.appId);
         return true;
     } catch (error) {
         console.error('Firebase 초기화 오류:', error);
