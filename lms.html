@@ -17,13 +17,18 @@
                 <ul>
                     <li><a href="#home" class="nav-link active">홈</a></li>
                     <li><a href="#courses" class="nav-link">강좌</a></li>
+                    <li><a href="#my-courses" class="nav-link" id="my-courses-nav" style="display: none;">내 강좌</a></li>
                     <li><a href="#about" class="nav-link">소개</a></li>
                     <li><a href="#contact" class="nav-link">문의</a></li>
                 </ul>
             </nav>
-            <div class="auth-buttons">
-                <button class="btn btn-outline" onclick="showLogin()">로그인</button>
-                <button class="btn btn-primary" onclick="showRegister()">회원가입</button>
+            <div class="auth-buttons" id="auth-buttons">
+                <button class="btn btn-outline" onclick="showLogin()" id="login-btn">로그인</button>
+                <button class="btn btn-primary" onclick="showRegister()" id="register-btn">회원가입</button>
+            </div>
+            <div class="user-info" id="user-info" style="display: none;">
+                <span class="welcome-text">안녕하세요, <span id="user-name-display"></span>님!</span>
+                <button class="btn btn-outline" onclick="logout()">로그아웃</button>
             </div>
         </div>
     </header>
@@ -87,6 +92,26 @@
                         <div class="feature-icon">🏆</div>
                         <h3>수료증 발급</h3>
                         <p>강좌 완료 시 공인된 수료증을 발급받을 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 내 강좌 섹션 -->
+        <section id="my-courses" class="my-courses-section">
+            <div class="container">
+                <h2 class="section-title">내 강좌</h2>
+                <div class="my-courses-content">
+                    <div class="enrolled-courses" id="enrolled-courses">
+                        <!-- 수강중인 강좌들이 여기에 표시됩니다 -->
+                    </div>
+                    <div class="empty-courses" id="empty-courses" style="display: none;">
+                        <div class="empty-state">
+                            <div class="empty-icon">📚</div>
+                            <h3>수강중인 강좌가 없습니다</h3>
+                            <p>다양한 강좌를 살펴보고 학습을 시작해보세요!</p>
+                            <button class="btn btn-primary" onclick="showSection('courses')">강좌 둘러보기</button>
+                        </div>
                     </div>
                 </div>
             </div>

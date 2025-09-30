@@ -119,7 +119,7 @@ class LMSSystem {
             }
         ];
 
-        this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
+        this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
         this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
         this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
 
@@ -131,6 +131,7 @@ class LMSSystem {
         this.bindEvents();
         this.updateAuthUI();
         this.handleNavigation();
+        this.loadMyCoursesIfLoggedIn();
     }
 
     bindEvents() {
@@ -156,15 +157,21 @@ class LMSSystem {
         });
 
         // 폼 제출 이벤트
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleLogin(e);
-        });
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin(e);
+            });
+        }
 
-        document.getElementById('register-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleRegister(e);
-        });
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegister(e);
+            });
+        }
 
         document.querySelector('.contact-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -451,6 +458,9 @@ class LMSSystem {
         this.enrollments.push(enrollment);
         localStorage.setItem('lms_enrollments', JSON.stringify(this.enrollments));
 
+        // 내 강좌 목록 새로고침
+        this.loadMyCourses();
+
         alert('수강신청이 완료되었습니다!');
         this.closeModal('enrollment-modal');
     }
@@ -463,6 +473,180 @@ class LMSSystem {
         }
 
         alert('찜 목록에 추가되었습니다!');
+    }
+
+    updateAuthUI() {
+        const authButtons = document.getElementById('auth-buttons');
+        const userInfo = document.getElementById('user-info');
+        const myCoursesNav = document.getElementById('my-courses-nav');
+
+        if (this.currentUser) {
+            // 로그인된 상태
+            authButtons.style.display = 'none';
+            userInfo.style.display = 'block';
+            myCoursesNav.style.display = 'block';
+            document.getElementById('user-name-display').textContent = this.currentUser.name;
+        } else {
+            // 로그아웃된 상태
+            authButtons.style.display = 'block';
+            userInfo.style.display = 'none';
+            myCoursesNav.style.display = 'none';
+        }
+    }
+
+    loadMyCoursesIfLoggedIn() {
+        if (this.currentUser) {
+            this.loadMyCourses();
+        }
+    }
+
+    loadMyCourses() {
+        const enrolledCoursesContainer = document.getElementById('enrolled-courses');
+        const emptyCoursesContainer = document.getElementById('empty-courses');
+
+        if (!this.currentUser) {
+            return;
+        }
+
+        // 현재 사용자의 수강신청 목록 가져오기
+        const userEnrollments = this.enrollments.filter(e => e.userId === this.currentUser.id && e.status === 'enrolled');
+
+        if (userEnrollments.length === 0) {
+            enrolledCoursesContainer.style.display = 'none';
+            emptyCoursesContainer.style.display = 'block';
+            return;
+        }
+
+        enrolledCoursesContainer.style.display = 'block';
+        emptyCoursesContainer.style.display = 'none';
+
+        // 수강중인 강좌들 렌더링
+        const enrolledCourses = userEnrollments.map(enrollment => {
+            return this.courses.find(course => course.id === enrollment.courseId);
+        }).filter(course => course); // null 값 제거
+
+        enrolledCoursesContainer.innerHTML = this.renderMyCoursesGrid(enrolledCourses);
+    }
+
+    renderMyCoursesGrid(courses) {
+        return `
+            <div class="my-courses-grid">
+                ${courses.map(course => `
+                    <div class="my-course-card">
+                        <div class="course-thumbnail">
+                            <div class="placeholder-image">
+                                <span>강좌 썸네일</span>
+                            </div>
+                            <div class="course-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 25%"></div>
+                                </div>
+                                <span class="progress-text">25% 완료</span>
+                            </div>
+                        </div>
+                        <div class="course-content">
+                            <span class="course-category">${this.getCategoryName(course.category)}</span>
+                            <h3 class="course-title">${course.title}</h3>
+                            <p class="course-instructor">강사: ${course.instructor}</p>
+                            <div class="course-actions">
+                                <button class="btn btn-primary" onclick="continueLearning(${course.id})">학습 계속하기</button>
+                                <button class="btn btn-outline" onclick="viewCourseDetail(${course.id})">강좌 정보</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    login(email, password) {
+        // 실제 로그인 처리 (임시 구현)
+        const user = this.users.find(u => u.email === email && u.password === password);
+
+        if (user) {
+            this.currentUser = user;
+            localStorage.setItem('lms_current_user', JSON.stringify(this.currentUser));
+            this.updateAuthUI();
+            this.loadMyCourses();
+            this.closeAllModals();
+            alert('로그인되었습니다!');
+            return true;
+        } else {
+            alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+            return false;
+        }
+    }
+
+    register(userData) {
+        // 실제 회원가입 처리 (임시 구현)
+        const existingUser = this.users.find(u => u.email === userData.email);
+
+        if (existingUser) {
+            alert('이미 존재하는 이메일입니다.');
+            return false;
+        }
+
+        const newUser = {
+            id: Date.now(),
+            ...userData,
+            registeredAt: new Date().toISOString()
+        };
+
+        this.users.push(newUser);
+        localStorage.setItem('lms_users', JSON.stringify(this.users));
+
+        alert('회원가입이 완료되었습니다!');
+        this.closeAllModals();
+        return true;
+    }
+
+    logout() {
+        this.currentUser = null;
+        localStorage.removeItem('lms_current_user');
+        this.updateAuthUI();
+        this.showSection('home');
+        alert('로그아웃되었습니다.');
+    }
+
+    handleLogin(e) {
+        const email = e.target.querySelector('input[type="email"]').value;
+        const password = e.target.querySelector('input[type="password"]').value;
+        this.login(email, password);
+    }
+
+    handleRegister(e) {
+        const userData = {
+            name: e.target.querySelector('input[type="text"]').value,
+            email: e.target.querySelector('input[type="email"]').value,
+            password: e.target.querySelectorAll('input[type="password"]')[0].value,
+            passwordConfirm: e.target.querySelectorAll('input[type="password"]')[1].value,
+            phone: e.target.querySelector('input[type="tel"]').value
+        };
+
+        if (userData.password !== userData.passwordConfirm) {
+            alert('비밀번호가 일치하지 않습니다.');
+            return;
+        }
+
+        this.register(userData);
+    }
+
+    handleContactForm(e) {
+        alert('문의가 접수되었습니다. 빠른 시일 내에 답변드리겠습니다.');
+        e.target.reset();
+    }
+
+    getDefaultUsers() {
+        return [
+            {
+                id: 1,
+                name: "테스트 사용자",
+                email: "test@example.com",
+                password: "test123",
+                phone: "010-1234-5678",
+                registeredAt: new Date().toISOString()
+            }
+        ];
     }
 }
 
@@ -489,6 +673,18 @@ function enrollCourse() {
 
 function addToWishlist() {
     lms.addToWishlist();
+}
+
+function logout() {
+    lms.logout();
+}
+
+function continueLearning(courseId) {
+    alert('학습 페이지로 이동합니다. (구현 예정)');
+}
+
+function viewCourseDetail(courseId) {
+    lms.showCourseDetail(courseId);
 }
 
 // LMS 시스템 초기화
