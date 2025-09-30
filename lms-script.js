@@ -144,32 +144,48 @@ class LMSSystem {
         try {
             // Firebase에서 데이터 로드
             if (this.isFirebaseReady) {
+                console.log('🔥 Firebase에서 데이터 로드 시작...');
+
                 const [courses, enrollments] = await Promise.all([
                     firebaseService.getCourses(),
                     firebaseService.getEnrollments()
                 ]);
 
+                console.log(`📚 로드된 강좌 수: ${courses.length}`);
+                console.log(`🎓 로드된 수강신청 수: ${enrollments.length}`);
+
                 // Firebase에서 강좌 데이터가 없으면 기본 데이터 사용
                 if (courses.length === 0) {
+                    console.log('⚠️ 강좌 데이터 없음 - 기본 강좌 초기화');
                     await this.initializeDefaultCourses();
                 } else {
                     this.courses = courses;
+                    console.log('✅ Firebase 강좌 데이터 로드 완료');
                 }
 
                 this.enrollments = enrollments;
                 this.currentUser = await firebaseService.getCurrentUser();
+
+                // 실시간 리스너 설정
+                this.setupFirebaseListeners();
             } else {
+                console.log('💾 Firebase 비활성화 - localStorage 사용');
                 // 로컬 스토리지 폴백
                 this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
                 this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
                 this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
             }
+
+            // 강좌 렌더링
+            this.renderCourses();
+
         } catch (error) {
             console.error('데이터 로드 오류:', error);
             // 오류 시 로컬 스토리지 사용
             this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
             this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
             this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+            this.renderCourses();
         }
     }
 
@@ -1010,6 +1026,119 @@ class LMSSystem {
 
         return newStatus;
     }
+
+    // Firebase 실시간 리스너 설정
+    setupFirebaseListeners() {
+        if (!this.isFirebaseReady || typeof db === 'undefined') {
+            console.log('❌ Firebase 리스너 설정 불가 - Firebase 비활성화');
+            return;
+        }
+
+        console.log('🔔 Firebase 실시간 리스너 설정 중...');
+
+        try {
+            // 강좌 데이터 실시간 리스너
+            db.collection('courses').onSnapshot((snapshot) => {
+                console.log('🔄 강좌 데이터 실시간 업데이트 감지');
+
+                const updatedCourses = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                // 데이터가 실제로 변경되었는지 확인
+                if (JSON.stringify(this.courses) !== JSON.stringify(updatedCourses)) {
+                    console.log('📚 강좌 데이터 변경됨 - UI 업데이트');
+                    this.courses = updatedCourses;
+                    this.renderCourses();
+
+                    // 변경 알림 표시
+                    this.showDataUpdateNotification('강좌 정보가 업데이트되었습니다.');
+                }
+            }, (error) => {
+                console.error('강좌 실시간 리스너 오류:', error);
+            });
+
+            // 수강신청 데이터 실시간 리스너
+            db.collection('enrollments').onSnapshot((snapshot) => {
+                console.log('🔄 수강신청 데이터 실시간 업데이트 감지');
+
+                const updatedEnrollments = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                if (JSON.stringify(this.enrollments) !== JSON.stringify(updatedEnrollments)) {
+                    console.log('🎓 수강신청 데이터 변경됨');
+                    this.enrollments = updatedEnrollments;
+
+                    // 내 강좌 페이지가 활성화되어 있다면 새로고침
+                    if (this.currentUser && document.getElementById('my-courses').style.display !== 'none') {
+                        this.loadMyCourses();
+                    }
+                }
+            }, (error) => {
+                console.error('수강신청 실시간 리스너 오류:', error);
+            });
+
+            console.log('✅ Firebase 실시간 리스너 설정 완료');
+
+        } catch (error) {
+            console.error('Firebase 리스너 설정 오류:', error);
+        }
+    }
+
+    // 데이터 업데이트 알림 표시
+    showDataUpdateNotification(message) {
+        // 기존 알림이 있다면 제거
+        const existingNotification = document.querySelector('.data-update-notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+
+        // 새 알림 생성
+        const notification = document.createElement('div');
+        notification.className = 'data-update-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.textContent = message;
+
+        // CSS 애니메이션 추가
+        if (!document.querySelector('#notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+
+        // 3초 후 자동 제거
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 }
 
 // 전역 함수들
@@ -1088,6 +1217,22 @@ window.lmsDebug = {
     checkFirebaseStatus: () => lms.checkFirebaseStatus(),
     refreshFirebaseStatus: () => lms.refreshFirebaseStatus(),
     getFirebaseReady: () => lms.isFirebaseReady,
+    refreshData: async () => {
+        console.log('🔄 데이터 수동 새로고침...');
+        await lms.loadData();
+        console.log('✅ 데이터 새로고침 완료');
+    },
+    getCourses: () => {
+        console.log('현재 강좌 데이터:', lms.courses);
+        return lms.courses;
+    },
+    setupListeners: () => {
+        console.log('🔔 실시간 리스너 수동 설정...');
+        lms.setupFirebaseListeners();
+    },
+    testNotification: (message = '테스트 알림입니다.') => {
+        lms.showDataUpdateNotification(message);
+    },
     testRegistration: async (email = `test-${Date.now()}@example.com`, password = 'test123') => {
         console.log('🧪 테스트 회원가입 시작:', { email, password });
         const result = await lms.register({
@@ -1105,4 +1250,8 @@ console.log('🛠️ 디버그 도구 사용법:');
 console.log('- lmsDebug.checkFirebaseStatus() : Firebase 상태 확인');
 console.log('- lmsDebug.refreshFirebaseStatus() : Firebase 상태 새로고침');
 console.log('- lmsDebug.getFirebaseReady() : 현재 Firebase 상태');
+console.log('- lmsDebug.refreshData() : 강좌 데이터 수동 새로고침');
+console.log('- lmsDebug.getCourses() : 현재 강좌 데이터 확인');
+console.log('- lmsDebug.setupListeners() : 실시간 리스너 수동 설정');
+console.log('- lmsDebug.testNotification() : 알림 테스트');
 console.log('- lmsDebug.testRegistration() : 테스트 회원가입 실행');
