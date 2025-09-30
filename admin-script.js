@@ -469,7 +469,14 @@ class AdminSystem {
             console.log('📄 설정 페이지 진입 - 설정 렌더링 시작');
             // 약간의 지연을 두어 DOM이 완전히 준비되도록 함
             setTimeout(() => {
-                this.renderSettings();
+                console.log('🔍 showSection에서 renderSettings 함수 존재 확인:', typeof this.renderSettings);
+                if (typeof this.renderSettings === 'function') {
+                    this.renderSettings();
+                } else {
+                    console.error('❌ showSection: renderSettings 함수가 정의되지 않았습니다!');
+                    console.log('AdminSystem 인스턴스:', this);
+                    console.log('사용 가능한 메소드들:', Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
+                }
             }, 100);
         }
     }
@@ -599,7 +606,24 @@ class AdminSystem {
 
     loadSettings() {
         console.log('📄 loadSettings() 호출됨 - renderSettings()로 전달');
-        this.renderSettings();
+        console.log('🔍 loadSettings에서 renderSettings 함수 존재 확인:', typeof this.renderSettings);
+        if (typeof this.renderSettings === 'function') {
+            this.renderSettings();
+        } else {
+            console.error('❌ loadSettings: renderSettings 함수가 정의되지 않았습니다!');
+            console.log('AdminSystem 인스턴스:', this);
+            console.log('사용 가능한 메소드들:', Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
+
+            // 폴백: 기존 방식으로 설정 로드
+            console.log('🔄 폴백: 기존 방식으로 설정 로드');
+            Object.keys(this.settings).forEach(key => {
+                const element = document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
+                if (element) {
+                    element.value = this.settings[key];
+                    console.log(`✅ 폴백 로드: ${key} = ${this.settings[key]}`);
+                }
+            });
+        }
     }
 
     getCategoryName(category) {
@@ -1156,7 +1180,14 @@ class AdminSystem {
                 this.showSaveSuccess(`설정이 저장되었습니다! (${saveMethod})`);
 
                 // 설정 페이지 새로고침 (저장된 값 표시)
-                this.renderSettings();
+                console.log('🔍 renderSettings 함수 존재 확인:', typeof this.renderSettings);
+                if (typeof this.renderSettings === 'function') {
+                    this.renderSettings();
+                } else {
+                    console.error('❌ renderSettings 함수가 정의되지 않았습니다!');
+                    console.log('사용 가능한 메소드들:', Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
+                    alert('설정이 저장되었지만 UI 새로고침에 실패했습니다. 페이지를 새로고침해주세요.');
+                }
             } else {
                 console.log('❌ 모든 저장 방법 실패');
                 alert('설정 저장 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
