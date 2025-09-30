@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 연결 상태 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status-card {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .status-success { border-color: #28a745; background: #d4edda; }
+        .status-warning { border-color: #ffc107; background: #fff3cd; }
+        .status-error { border-color: #dc3545; background: #f8d7da; }
+        .status-info { border-color: #17a2b8; background: #d1ecf1; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn.success { background: #28a745; }
+        .btn.danger { background: #dc3545; }
+        .test-results {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .auto-test {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,123,255,0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auto-test" id="auto-test">자동 테스트: 준비 중...</div>
+
+    <div class="container">
+        <h1>🔥 Firebase 연결 상태 실시간 테스트</h1>
+        <p>Firestore와 Firebase Auth의 연결 상태를 실시간으로 확인합니다.</p>
+
+        <!-- 빠른 테스트 버튼들 -->
+        <div>
+            <button class="btn success" onclick="runQuickTest()">빠른 연결 테스트</button>
+            <button class="btn" onclick="testFirestoreConnection()">Firestore 연결 테스트</button>
+            <button class="btn" onclick="testAuthConnection()">Auth 연결 테스트</button>
+            <button class="btn" onclick="testFullFlow()">전체 플로우 테스트</button>
+            <button class="btn danger" onclick="clearResults()">결과 지우기</button>
+        </div>
+    </div>
+
+    <!-- 연결 상태 카드들 -->
+    <div class="container">
+        <h2>📊 실시간 연결 상태</h2>
+
+        <div id="firestore-card" class="status-card status-info">
+            <h3>🗄️ Firestore 연결</h3>
+            <div id="firestore-status">확인 중...</div>
+        </div>
+
+        <div id="auth-card" class="status-card status-info">
+            <h3>🔐 Firebase Auth</h3>
+            <div id="auth-status">확인 중...</div>
+        </div>
+
+        <div id="config-card" class="status-card status-info">
+            <h3>⚙️ Firebase 설정</h3>
+            <div id="config-status">확인 중...</div>
+        </div>
+    </div>
+
+    <!-- 테스트 실행 섹션 -->
+    <div class="container">
+        <h2>🧪 테스트 실행</h2>
+
+        <div class="form-group">
+            <label>테스트 이메일:</label>
+            <input type="email" id="test-email" value="test@example.com">
+        </div>
+        <div class="form-group">
+            <label>테스트 비밀번호:</label>
+            <input type="password" id="test-password" value="test123456">
+        </div>
+
+        <button class="btn" onclick="testRegistration()">회원가입 테스트</button>
+        <button class="btn" onclick="testLogin()">로그인 테스트</button>
+        <button class="btn" onclick="testFirestoreWrite()">Firestore 쓰기 테스트</button>
+        <button class="btn" onclick="testFirestoreRead()">Firestore 읽기 테스트</button>
+
+        <div id="test-results" class="test-results">테스트 결과가 여기에 표시됩니다...</div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        let app, auth, db;
+        const results = document.getElementById('test-results');
+
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyAW1hX726N0EQv6uW0_6yUyGCsWylYlEEI",
+            authDomain: "lms-26168.firebaseapp.com",
+            databaseURL: "https://lms-26168-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "lms-26168",
+            storageBucket: "lms-26168.firebasestorage.app",
+            messagingSenderId: "264403082469",
+            appId: "1:264403082469:web:74f35eaec8e2c2f322080c",
+            measurementId: "G-9XGFHD0R9P"
+        };
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            results.textContent += `[${timestamp}] ${icon} ${message}\n`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            results.textContent = '';
+        }
+
+        function updateCard(cardId, status, message) {
+            const card = document.getElementById(cardId);
+            const statusDiv = card.querySelector('div');
+
+            card.className = `status-card status-${status}`;
+            statusDiv.innerHTML = message;
+        }
+
+        // Firebase 초기화
+        async function initializeFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+
+                log('Firebase 초기화 성공', 'success');
+                updateCard('config-card', 'success', '✅ 초기화 완료<br>프로젝트: ' + firebaseConfig.projectId);
+
+                return true;
+            } catch (error) {
+                log('Firebase 초기화 실패: ' + error.message, 'error');
+                updateCard('config-card', 'error', '❌ 초기화 실패<br>' + error.message);
+                return false;
+            }
+        }
+
+        // Firestore 연결 테스트
+        async function testFirestoreConnection() {
+            log('Firestore 연결 테스트 시작...');
+
+            try {
+                await db.enableNetwork();
+                log('Firestore 네트워크 연결 성공', 'success');
+
+                // 간단한 읽기 테스트
+                const testQuery = await db.collection('connection-test').limit(1).get();
+                log(`Firestore 읽기 테스트 성공 (${testQuery.size}개 문서)`, 'success');
+
+                updateCard('firestore-card', 'success',
+                    '✅ 연결 성공<br>' +
+                    '✅ 네트워크 활성화<br>' +
+                    `✅ 읽기 테스트 완료 (${testQuery.size}개 문서)`
+                );
+
+                return true;
+            } catch (error) {
+                log('Firestore 연결 실패: ' + error.message, 'error');
+                updateCard('firestore-card', 'error',
+                    '❌ 연결 실패<br>' +
+                    '오류: ' + error.code + '<br>' +
+                    '메시지: ' + error.message
+                );
+                return false;
+            }
+        }
+
+        // Firebase Auth 연결 테스트
+        async function testAuthConnection() {
+            log('Firebase Auth 연결 테스트 시작...');
+
+            try {
+                // Auth 상태 리스너 테스트
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        log(`Auth 상태: 로그인됨 (${user.email})`, 'success');
+                        updateCard('auth-card', 'success',
+                            '✅ Auth 서비스 활성화<br>' +
+                            `✅ 현재 사용자: ${user.email}<br>` +
+                            `✅ UID: ${user.uid}`
+                        );
+                    } else {
+                        log('Auth 상태: 로그인되지 않음');
+                        updateCard('auth-card', 'warning',
+                            '✅ Auth 서비스 활성화<br>' +
+                            '⚠️ 현재 로그인되지 않음<br>' +
+                            '✅ 연결 상태 정상'
+                        );
+                    }
+                });
+
+                log('Firebase Auth 연결 성공', 'success');
+                return true;
+            } catch (error) {
+                log('Firebase Auth 연결 실패: ' + error.message, 'error');
+                updateCard('auth-card', 'error',
+                    '❌ Auth 연결 실패<br>' +
+                    '오류: ' + error.message
+                );
+                return false;
+            }
+        }
+
+        // 빠른 연결 테스트
+        async function runQuickTest() {
+            log('=== 빠른 연결 테스트 시작 ===');
+
+            const firebaseOk = await initializeFirebase();
+            if (!firebaseOk) return;
+
+            const firestoreOk = await testFirestoreConnection();
+            const authOk = await testAuthConnection();
+
+            if (firebaseOk && firestoreOk && authOk) {
+                log('🎉 모든 서비스 연결 성공!', 'success');
+                document.getElementById('auto-test').textContent = '자동 테스트: 모든 연결 성공!';
+                document.getElementById('auto-test').style.background = 'rgba(40,167,69,0.9)';
+            } else {
+                log('⚠️ 일부 서비스 연결 실패', 'warning');
+                document.getElementById('auto-test').textContent = '자동 테스트: 연결 문제 발견';
+                document.getElementById('auto-test').style.background = 'rgba(255,193,7,0.9)';
+            }
+        }
+
+        // 회원가입 테스트
+        async function testRegistration() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            log(`회원가입 테스트 시작: ${email}`);
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                log(`회원가입 성공: ${user.email} (UID: ${user.uid})`, 'success');
+
+                // Firestore에 사용자 정보 저장 테스트
+                await db.collection('users').doc(user.uid).set({
+                    email: user.email,
+                    name: '테스트 사용자',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                log('Firestore 사용자 정보 저장 완료', 'success');
+
+            } catch (error) {
+                log(`회원가입 실패: ${error.code} - ${error.message}`, 'error');
+            }
+        }
+
+        // 로그인 테스트
+        async function testLogin() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            log(`로그인 테스트 시작: ${email}`);
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                log(`로그인 성공: ${user.email}`, 'success');
+
+            } catch (error) {
+                log(`로그인 실패: ${error.code} - ${error.message}`, 'error');
+            }
+        }
+
+        // Firestore 쓰기 테스트
+        async function testFirestoreWrite() {
+            log('Firestore 쓰기 테스트 시작...');
+
+            try {
+                const testDoc = {
+                    message: 'Firebase 연결 테스트',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    testId: 'write-test-' + Date.now()
+                };
+
+                const docRef = await db.collection('connection-test').add(testDoc);
+                log(`Firestore 쓰기 성공: 문서 ID ${docRef.id}`, 'success');
+
+            } catch (error) {
+                log(`Firestore 쓰기 실패: ${error.code} - ${error.message}`, 'error');
+            }
+        }
+
+        // Firestore 읽기 테스트
+        async function testFirestoreRead() {
+            log('Firestore 읽기 테스트 시작...');
+
+            try {
+                const snapshot = await db.collection('connection-test').orderBy('timestamp', 'desc').limit(5).get();
+                log(`Firestore 읽기 성공: ${snapshot.size}개 문서 조회`, 'success');
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    log(`- 문서 ${doc.id}: ${data.message || '메시지 없음'}`);
+                });
+
+            } catch (error) {
+                log(`Firestore 읽기 실패: ${error.code} - ${error.message}`, 'error');
+            }
+        }
+
+        // 전체 플로우 테스트
+        async function testFullFlow() {
+            log('=== 전체 플로우 테스트 시작 ===');
+
+            // 1. 초기화
+            await runQuickTest();
+
+            // 2. 회원가입
+            await testRegistration();
+
+            // 3. 로그인
+            await testLogin();
+
+            // 4. Firestore 쓰기
+            await testFirestoreWrite();
+
+            // 5. Firestore 읽기
+            await testFirestoreRead();
+
+            log('=== 전체 플로우 테스트 완료 ===', 'success');
+        }
+
+        // 페이지 로드 시 자동 테스트
+        document.addEventListener('DOMContentLoaded', async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
+            await runQuickTest();
+        });
+    </script>
+</body>
+</html>
