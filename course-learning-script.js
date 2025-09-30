@@ -450,6 +450,7 @@ element.classList.toggle('toggle-class');</code></pre>
         this.renderLessonsList();
         this.updateCurrentLessonInfo(lesson);
         this.loadLessonContent(lesson);
+        this.updateCompletionButton();
     }
 
     updateCurrentLessonInfo(lesson) {
@@ -680,6 +681,107 @@ element.classList.toggle('toggle-class');</code></pre>
         settingsPanel.classList.toggle('open');
     }
 
+    changeLessonSpeed() {
+        const speedSelect = document.getElementById('lesson-speed');
+        const video = document.getElementById('lesson-video');
+
+        if (video && speedSelect) {
+            const speed = parseFloat(speedSelect.value);
+            video.playbackRate = speed;
+            console.log(`재생 속도 변경: ${speed}x`);
+        }
+    }
+
+    markLessonComplete() {
+        if (!this.lessons[this.currentLessonIndex]) {
+            alert('선택된 강의가 없습니다.');
+            return;
+        }
+
+        const currentLesson = this.lessons[this.currentLessonIndex];
+        const lessonId = currentLesson.id;
+
+        // 이미 완료된 강의인지 확인
+        if (this.progress[lessonId]?.completed) {
+            alert('이미 완료된 강의입니다.');
+            return;
+        }
+
+        // 진행률을 100%로 설정하고 완료 처리
+        this.progress[lessonId] = {
+            completed: true,
+            watchTime: currentLesson.duration || '00:00',
+            completedAt: new Date().toISOString(),
+            progress: 100
+        };
+
+        // 버튼 상태 업데이트
+        this.updateCompletionButton();
+
+        // 사이드바 강의 목록 업데이트
+        this.renderLessonsList();
+
+        // 전체 진행률 업데이트
+        this.updateOverallProgress();
+
+        // 진행률 저장
+        this.saveProgress();
+
+        // 완료 메시지
+        this.showCompletionMessage(currentLesson.title);
+
+        console.log(`강의 "${currentLesson.title}" 완료 처리됨`);
+    }
+
+    updateCompletionButton() {
+        const completeBtn = document.getElementById('mark-complete-btn');
+        const currentLesson = this.lessons[this.currentLessonIndex];
+
+        if (!completeBtn || !currentLesson) return;
+
+        const isCompleted = this.progress[currentLesson.id]?.completed || false;
+
+        if (isCompleted) {
+            completeBtn.classList.add('completed');
+            completeBtn.disabled = true;
+            completeBtn.innerHTML = `
+                <span class="btn-icon">✓</span>
+                <span class="btn-text">수강 완료</span>
+            `;
+        } else {
+            completeBtn.classList.remove('completed');
+            completeBtn.disabled = false;
+            completeBtn.innerHTML = `
+                <span class="btn-icon">✓</span>
+                <span class="btn-text">수강 완료</span>
+            `;
+        }
+    }
+
+    showCompletionMessage(lessonTitle) {
+        // 간단한 완료 메시지 표시
+        const message = document.createElement('div');
+        message.className = 'completion-message';
+        message.innerHTML = `
+            <div class="message-content">
+                <div class="message-icon">🎉</div>
+                <div class="message-text">
+                    <strong>"${lessonTitle}"</strong><br>
+                    강의를 완료했습니다!
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(message);
+
+        // 3초 후 메시지 제거
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.parentNode.removeChild(message);
+            }
+        }, 3000);
+    }
+
     // 유틸리티 함수들
     formatTime(seconds) {
         if (!seconds || isNaN(seconds)) return '00:00';
@@ -803,6 +905,14 @@ function toggleSidebar() {
 
 function toggleSettings() {
     learningSystem.toggleSettings();
+}
+
+function changeLessonSpeed() {
+    learningSystem.changeLessonSpeed();
+}
+
+function markLessonComplete() {
+    learningSystem.markLessonComplete();
 }
 
 // 시스템 초기화

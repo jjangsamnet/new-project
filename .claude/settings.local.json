@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix course learning navigation and add cache busting\n\n- 학습 페이지 이동 기능 디버깅 정보 추가\n- JavaScript 캐시 문제 해결을 위한 버전 파라미터 추가\n- continueLearning 함수 로그 출력 개선\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

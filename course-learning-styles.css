@@ -785,3 +785,172 @@ body {
         max-width: 200px;
     }
 }
+
+/* 강의 컨트롤 영역 */
+.lesson-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: #2a2a2a;
+    border-radius: 10px;
+    margin: 20px 0;
+    border: 1px solid #404040;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #cccccc;
+    min-width: 80px;
+}
+
+#lesson-speed {
+    padding: 8px 12px;
+    background: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+#lesson-speed:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.completion-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.completion-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.completion-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.completion-btn.completed {
+    background: #6c757d;
+    cursor: default;
+}
+
+.completion-btn.completed:hover {
+    background: #6c757d;
+    transform: none;
+    box-shadow: none;
+}
+
+.completion-btn .btn-icon {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.completion-btn.completed .btn-text::after {
+    content: ' 됨';
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+    .lesson-controls {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+
+    .control-group {
+        justify-content: space-between;
+    }
+
+    .completion-btn {
+        width: 100%;
+    }
+}
+
+/* 완료 메시지 */
+.completion-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    z-index: 10000;
+    animation: completionFadeIn 0.3s ease-out;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    text-align: center;
+}
+
+.message-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.message-icon {
+    font-size: 48px;
+    animation: celebrationBounce 0.6s ease-out;
+}
+
+.message-text {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.message-text strong {
+    color: #28a745;
+    display: block;
+    margin-bottom: 5px;
+}
+
+@keyframes completionFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes celebrationBounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}

@@ -100,6 +100,27 @@
                 </div>
             </div>
 
+            <!-- 강의 컨트롤 영역 -->
+            <div class="lesson-controls">
+                <div class="control-group">
+                    <label for="lesson-speed">재생 속도:</label>
+                    <select id="lesson-speed" onchange="changeLessonSpeed()">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <button class="completion-btn" id="mark-complete-btn" onclick="markLessonComplete()">
+                        <span class="btn-icon">✓</span>
+                        <span class="btn-text">수강 완료</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- 학습 자료 -->
             <div class="learning-materials">
                 <div class="materials-tabs">
