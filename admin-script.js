@@ -710,29 +710,44 @@ class AdminSystem {
             });
         }
 
-        const csvContent = [
-            ['강좌명', '소속', '이름', '이메일', '전화번호', '지역', '진도율', '이수일'],
-            ...data.map(completion => {
-                const user = this.users.find(u => u.id === completion.userId);
-                const course = this.courses.find(c => c.id === completion.courseId);
-                return [
-                    course?.title || '알 수 없음',
-                    user?.affiliation || user?.organization || '-',
-                    user?.name || '알 수 없음',
-                    user?.email || '-',
-                    user?.phone || '-',
-                    user?.region || '-',
-                    `${completion.progress}%`,
-                    this.formatDate(completion.lastAccessedAt || completion.enrolledAt)
-                ];
-            })
-        ].map(row => row.join(',')).join('\\n');
+        // CSV 헤더
+        const headers = ['강좌명', '소속', '이름', '이메일', '전화번호', '지역', '진도율', '이수일'];
 
+        // CSV 데이터 행
+        const rows = data.map(completion => {
+            const user = this.users.find(u => u.id === completion.userId);
+            const course = this.courses.find(c => c.id === completion.courseId);
+            return [
+                `"${(course?.title || '알 수 없음').replace(/"/g, '""')}"`,
+                `"${(user?.affiliation || user?.organization || '-').replace(/"/g, '""')}"`,
+                `"${(user?.name || '알 수 없음').replace(/"/g, '""')}"`,
+                `"${(user?.email || '-').replace(/"/g, '""')}"`,
+                `"${(user?.phone || '-').replace(/"/g, '""')}"`,
+                `"${(user?.region || '-').replace(/"/g, '""')}"`,
+                completion.progress + '%',
+                this.formatDate(completion.lastAccessedAt || completion.enrolledAt)
+            ];
+        });
+
+        // CSV 문자열 생성
+        const csvContent = [headers, ...rows]
+            .map(row => row.join(','))
+            .join('\r\n');
+
+        // BOM 추가하여 한글 깨짐 방지
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `이수자명단_${this.selectedMonth || '전체'}_${new Date().toISOString().split('T')[0]}.csv`;
+
+        const fileName = this.selectedMonth
+            ? `이수자명단_${this.selectedMonth}_${new Date().toISOString().split('T')[0]}.csv`
+            : `이수자명단_전체_${new Date().toISOString().split('T')[0]}.csv`;
+
+        link.download = fileName;
         link.click();
+
+        // 메모리 정리
+        URL.revokeObjectURL(link.href);
     }
 
     loadSettings() {
