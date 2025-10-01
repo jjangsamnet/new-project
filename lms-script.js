@@ -1255,7 +1255,7 @@ class LMSSystem {
                     }
                     .cert-content {
                         position: relative;
-                        text-align: right;
+                        text-align: center;
                     }
                     .cert-title {
                         font-size: 36px;
@@ -1268,7 +1268,8 @@ class LMSSystem {
                         font-size: 28px;
                         font-weight: bold;
                         margin: 30px 0;
-                        display: inline-block;
+                        display: block;
+                        text-align: right;
                     }
                     .cert-course {
                         font-size: 18px;
