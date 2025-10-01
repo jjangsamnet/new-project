@@ -807,8 +807,12 @@ class AdminSystem {
 
         let courseToSave;
         if (this.currentEditingCourse) {
-            // 기존 강좌 수정
-            courseToSave = { ...this.currentEditingCourse, ...formData };
+            // 기존 강좌 수정 - lessons 배열 유지
+            courseToSave = {
+                ...this.currentEditingCourse,
+                ...formData,
+                lessons: this.currentEditingCourse.lessons || []
+            };
         } else {
             // 새 강좌 추가
             courseToSave = {
@@ -816,7 +820,8 @@ class AdminSystem {
                 ...formData,
                 rating: 0,
                 students: 0,
-                status: 'active'
+                status: 'active',
+                lessons: []
             };
         }
 

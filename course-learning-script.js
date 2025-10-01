@@ -82,8 +82,14 @@ class CourseLearningSystem {
                 return;
             }
 
-            // 강좌의 커리큘럼을 기반으로 차시 정보 생성
-            this.lessons = this.generateLessonsFromCurriculum(this.currentCourse);
+            // 강좌의 lessons 배열 사용 (없으면 커리큘럼에서 생성)
+            if (this.currentCourse.lessons && this.currentCourse.lessons.length > 0) {
+                console.log('✅ 강좌에 등록된 차시 사용:', this.currentCourse.lessons.length, '개');
+                this.lessons = this.currentCourse.lessons;
+            } else {
+                console.log('⚠️ 강좌에 차시 없음 - 커리큘럼에서 생성');
+                this.lessons = this.generateLessonsFromCurriculum(this.currentCourse);
+            }
 
             // 프로그레스 및 사용자 노트 로드
             await this.loadUserProgress();
