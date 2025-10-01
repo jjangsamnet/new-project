@@ -476,6 +476,27 @@
                     </div>
                 </div>
 
+                <!-- 강좌 썸네일 이미지 업로드 섹션 -->
+                <div class="form-group">
+                    <label>강좌 썸네일 이미지</label>
+                    <div class="thumbnail-upload-section">
+                        <input type="file" id="thumbnail-image-input" accept="image/*" style="display: none;">
+                        <div class="thumbnail-upload-area" id="thumbnail-upload-area" onclick="document.getElementById('thumbnail-image-input').click()">
+                            <div class="upload-placeholder" id="thumbnail-placeholder">
+                                <div class="upload-icon">🖼️</div>
+                                <p>클릭하여 썸네일 이미지 선택</p>
+                                <small>지원 형식: JPG, PNG (최대 5MB, 권장 크기: 1280x720)</small>
+                            </div>
+                            <img id="thumbnail-preview" style="display: none; width: 100%; max-height: 300px; object-fit: cover;">
+                        </div>
+                        <div id="thumbnail-actions" style="display: none; margin-top: 10px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="removeThumbnail()">이미지 제거</button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('thumbnail-image-input').click()">다른 이미지 선택</button>
+                        </div>
+                        <input type="hidden" id="thumbnail-url-hidden">
+                    </div>
+                </div>
+
                 <!-- 강좌 차시 관리 섹션 -->
                 <div class="form-group">
                     <label>강좌 차시 관리</label>

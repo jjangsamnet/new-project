@@ -364,8 +364,31 @@ element.classList.toggle('toggle-class');</code></pre>
             const progressKey = `course_progress_${this.currentCourse.id}_${this.currentUser.id}`;
             localStorage.setItem(progressKey, JSON.stringify(this.progress));
 
-            if (this.isFirebaseReady) {
-                // Firebase에 진행률 저장 (구현 예정)
+            // 전체 진도율 계산
+            const completedLessons = Object.values(this.progress).filter(p => p.completed).length;
+            const totalLessons = this.lessons.length;
+            const overallProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+            console.log(`📊 진도율 업데이트: ${completedLessons}/${totalLessons} = ${overallProgress}%`);
+
+            // Firebase enrollment에 진도율 업데이트
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                try {
+                    const enrollments = await firebaseService.getEnrollments();
+                    const enrollment = enrollments.find(e =>
+                        e.userId === this.currentUser.id &&
+                        e.courseId === this.currentCourse.id
+                    );
+
+                    if (enrollment) {
+                        enrollment.progress = overallProgress;
+                        enrollment.lastAccessedAt = new Date().toISOString();
+                        const result = await firebaseService.saveEnrollment(enrollment);
+                        console.log('✅ Firebase enrollment 진도율 업데이트:', overallProgress, '%');
+                    }
+                } catch (error) {
+                    console.error('Firebase 진도율 업데이트 오류:', error);
+                }
             }
         } catch (error) {
             console.error('진행률 저장 오류:', error);
@@ -502,10 +525,18 @@ element.classList.toggle('toggle-class');</code></pre>
                     iframe.frameBorder = '0';
                     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                     iframe.allowFullscreen = true;
+                    iframe.style.position = 'absolute';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
 
                     // 기존 video 요소 숨기고 iframe 추가
                     lessonVideo.style.display = 'none';
                     videoPlaceholder.innerHTML = '';
+                    videoPlaceholder.style.position = 'relative';
+                    videoPlaceholder.style.paddingBottom = '56.25%'; // 16:9 비율
+                    videoPlaceholder.style.height = '0';
                     videoPlaceholder.appendChild(iframe);
                     videoPlaceholder.style.display = 'block';
                 } else {
@@ -751,11 +782,23 @@ element.classList.toggle('toggle-class');</code></pre>
     changeLessonSpeed() {
         const speedSelect = document.getElementById('lesson-speed');
         const video = document.getElementById('lesson-video');
+        const youtubePlayer = document.getElementById('youtube-player');
 
-        if (video && speedSelect) {
+        if (speedSelect) {
             const speed = parseFloat(speedSelect.value);
-            video.playbackRate = speed;
-            console.log(`재생 속도 변경: ${speed}x`);
+
+            // 일반 비디오 요소
+            if (video && video.style.display !== 'none') {
+                video.playbackRate = speed;
+                console.log(`재생 속도 변경: ${speed}x`);
+            }
+
+            // 유튜브 iframe (YouTube IFrame API 필요)
+            if (youtubePlayer) {
+                // 유튜브는 iframe API를 통해 배속 조절해야 함
+                console.log('⚠️ 유튜브 영상은 플레이어 내 설정에서 배속을 조절해주세요.');
+                alert('유튜브 영상은 플레이어 하단의 설정(⚙️)에서 배속을 조절할 수 있습니다.');
+            }
         }
     }
 
