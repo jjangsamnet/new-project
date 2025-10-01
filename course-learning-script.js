@@ -14,9 +14,41 @@ class CourseLearningSystem {
     }
 
     async initializeWithFirebase() {
-        // Firebase 서비스 준비 대기
-        await firebaseService.waitForFirebase();
-        this.isFirebaseReady = firebaseService.isFirebaseReady;
+        console.log('🚀 학습 페이지 초기화 시작...');
+
+        // Firebase 서비스 준비 대기 - 더 긴 시간 대기
+        console.log('⏳ Firebase 서비스 준비 대기 중...');
+
+        // Firebase 초기화 완료 대기 (최대 10초)
+        let firebaseReady = false;
+        let attempts = 0;
+        const maxAttempts = 100;
+
+        while (!firebaseReady && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+
+            if (typeof firebaseService !== 'undefined' && typeof isFirebaseEnabled !== 'undefined') {
+                if (isFirebaseEnabled && typeof auth !== 'undefined' && typeof db !== 'undefined') {
+                    firebaseReady = true;
+                    this.isFirebaseReady = true;
+                    console.log(`✅ Firebase 준비 완료 (${attempts}회 시도)`);
+                    break;
+                }
+            }
+
+            // 5초 후에도 Firebase가 준비되지 않으면 localStorage 모드로
+            if (attempts === 50) {
+                console.log('⚠️ Firebase 초기화 지연 중 - localStorage 모드로 시작 가능성');
+            }
+        }
+
+        if (!firebaseReady) {
+            console.log('💾 Firebase 준비 실패 - localStorage 모드 사용');
+            this.isFirebaseReady = false;
+        }
+
+        console.log('🔥 Firebase 준비 상태:', this.isFirebaseReady ? 'Firebase 모드' : 'localStorage 모드');
 
         // 현재 사용자 확인
         await this.checkCurrentUser();
