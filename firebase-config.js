@@ -14,17 +14,22 @@ const firebaseConfig = {
 };
 
 // 로컬 설정 파일이 있다면 사용 (개발용)
-console.log('🔧 Firebase 설정 병합 시도...');
-console.log('기본 설정:', firebaseConfig);
+console.log('🔧 Firebase 설정 로드 중...');
 
-if (typeof firebaseConfigLocal !== 'undefined') {
-    console.log('✓ 로컬 설정 파일 발견:', firebaseConfigLocal);
-    Object.assign(firebaseConfig, firebaseConfigLocal);
-    console.log('✓ 설정 병합 완료:', firebaseConfig);
-} else {
-    console.warn('⚠ firebaseConfigLocal 변수가 정의되지 않았습니다.');
-    console.log('현재 전역 변수:', Object.keys(window).filter(key => key.includes('firebase')));
-}
+// firebaseConfigLocal이 이미 로드되었는지 확인 (firebase-config.local.js)
+setTimeout(() => {
+    if (typeof firebaseConfigLocal !== 'undefined') {
+        console.log('✓ 로컬 설정 파일 발견, 병합 중...');
+        Object.assign(firebaseConfig, firebaseConfigLocal);
+        console.log('✓ 설정 병합 완료');
+    } else {
+        console.log('ℹ️ 로컬 설정 파일 없음 - 기본 설정 사용');
+    }
+    console.log('📋 최종 Firebase 설정:', {
+        projectId: firebaseConfig.projectId,
+        authDomain: firebaseConfig.authDomain
+    });
+}, 100);
 
 // Firebase 초기화
 let app, auth, db, storage, analytics;
