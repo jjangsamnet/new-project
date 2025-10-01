@@ -522,7 +522,7 @@ class AdminSystem {
                 return {
                     userName: user?.name || '알 수 없음',
                     courseName: course?.title || '알 수 없음',
-                    date: new Date(enrollment.enrolledAt).toLocaleDateString('ko-KR')
+                    date: this.formatDate(enrollment.enrolledAt)
                 };
             });
 
@@ -585,7 +585,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
-                    <td>${new Date(user.registeredAt).toLocaleDateString('ko-KR')}</td>
+                    <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
@@ -608,7 +608,7 @@ class AdminSystem {
                 <tr>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
-                    <td>${new Date(enrollment.enrolledAt).toLocaleDateString('ko-KR')}</td>
+                    <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${this.getPaymentMethodName(enrollment.paymentMethod)}</td>
                     <td><span class="status-badge status-${enrollment.status || 'enrolled'}">${this.getEnrollmentStatusName(enrollment.status || 'enrolled')}</span></td>
                     <td>
@@ -709,7 +709,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
-                    <td>${new Date(user.registeredAt).toLocaleDateString('ko-KR')}</td>
+                    <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
@@ -741,7 +741,7 @@ class AdminSystem {
                 <tr>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
-                    <td>${new Date(enrollment.enrolledAt).toLocaleDateString('ko-KR')}</td>
+                    <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${this.getPaymentMethodName(enrollment.paymentMethod)}</td>
                     <td><span class="status-badge status-${enrollment.status || 'enrolled'}">${this.getEnrollmentStatusName(enrollment.status || 'enrolled')}</span></td>
                     <td>
@@ -1428,7 +1428,7 @@ class AdminSystem {
             return [
                 user?.name || '알 수 없음',
                 course?.title || '알 수 없음',
-                new Date(enrollment.enrolledAt).toLocaleDateString('ko-KR'),
+                this.formatDate(enrollment.enrolledAt),
                 this.getPaymentMethodName(enrollment.paymentMethod),
                 this.getEnrollmentStatusName(enrollment.status || 'enrolled')
             ];
@@ -1457,6 +1457,30 @@ class AdminSystem {
 
     hideLoading() {
         document.getElementById('loading-overlay').classList.remove('show');
+    }
+
+    formatDate(dateValue) {
+        if (!dateValue) return '-';
+
+        try {
+            // Firebase Timestamp 객체인 경우
+            if (dateValue && typeof dateValue.toDate === 'function') {
+                return dateValue.toDate().toLocaleDateString('ko-KR');
+            }
+            // Firestore Timestamp 객체 (seconds, nanoseconds)
+            if (dateValue && dateValue.seconds) {
+                return new Date(dateValue.seconds * 1000).toLocaleDateString('ko-KR');
+            }
+            // ISO 문자열이나 일반 날짜
+            const date = new Date(dateValue);
+            if (!isNaN(date.getTime())) {
+                return date.toLocaleDateString('ko-KR');
+            }
+        } catch (error) {
+            console.error('날짜 변환 오류:', error, dateValue);
+        }
+
+        return '-';
     }
 
     setupRealtimeListeners() {
