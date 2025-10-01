@@ -325,9 +325,23 @@ class LMSSystem {
         if (!course) return;
 
         // 이미 수강중인지 확인
+        console.log('🔍 수강신청 중복 체크 중...');
+        console.log('현재 사용자 ID:', this.currentUser.id);
+        console.log('강좌 ID:', courseId);
+        console.log('전체 수강신청:', this.enrollments.length, '개');
+        console.log('수강신청 목록:', this.enrollments.map(e => ({
+            enrollmentId: e.id,
+            userId: e.userId,
+            courseId: e.courseId,
+            userMatch: e.userId === this.currentUser.id,
+            courseMatch: e.courseId === courseId
+        })));
+
         const isEnrolled = this.enrollments.find(e => e.userId === this.currentUser.id && e.courseId === courseId);
+        console.log('중복 체크 결과:', isEnrolled ? '이미 수강중' : '수강 가능');
 
         if (isEnrolled) {
+            console.log('❌ 중복된 수강신청:', isEnrolled);
             alert('이미 수강중인 강좌입니다.');
             return;
         }
@@ -360,9 +374,15 @@ class LMSSystem {
             status: 'enrolled'
         };
 
+        console.log('💾 수강신청 생성 중...');
+        console.log('수강신청 정보:', enrollment);
+        console.log('현재 사용자 ID:', this.currentUser.id);
+        console.log('현재 사용자 authMethod:', this.currentUser.authMethod);
+
         try {
             // Firebase에 수강신청 저장
             const result = await firebaseService.saveEnrollment(enrollment);
+            console.log('Firebase 저장 결과:', result);
 
             if (result.success || !this.isFirebaseReady) {
                 this.enrollments.push(enrollment);
@@ -429,8 +449,26 @@ class LMSSystem {
             return;
         }
 
+        console.log('🔍 내 강좌 로딩 중...');
+        console.log('현재 사용자 ID:', this.currentUser.id);
+        console.log('현재 사용자 정보:', this.currentUser);
+        console.log('전체 수강신청 수:', this.enrollments.length);
+        console.log('전체 수강신청 목록:', this.enrollments.map(e => ({
+            enrollmentId: e.id,
+            userId: e.userId,
+            courseId: e.courseId,
+            status: e.status
+        })));
+
         // 현재 사용자의 수강신청 목록 가져오기
         const userEnrollments = this.enrollments.filter(e => e.userId === this.currentUser.id && e.status === 'enrolled');
+
+        console.log('필터링된 내 수강신청:', userEnrollments.length, '개');
+        console.log('매칭 결과:', this.enrollments.map(e => ({
+            enrollmentUserId: e.userId,
+            currentUserId: this.currentUser.id,
+            match: e.userId === this.currentUser.id
+        })));
 
         if (userEnrollments.length === 0) {
             enrolledCoursesContainer.style.display = 'none';
@@ -968,13 +1006,24 @@ class LMSSystem {
                     firebaseId: doc.id
                 }));
 
+                console.log('Firebase에서 받은 수강신청:', updatedEnrollments.length, '개');
+                console.log('수강신청 상세:', updatedEnrollments.map(e => ({
+                    id: e.id,
+                    userId: e.userId,
+                    courseId: e.courseId,
+                    status: e.status
+                })));
+
                 if (JSON.stringify(this.enrollments) !== JSON.stringify(updatedEnrollments)) {
-                    console.log('🎓 수강신청 데이터 변경됨');
+                    console.log('🎓 수강신청 데이터 변경됨 - 이전:', this.enrollments.length, '개 → 현재:', updatedEnrollments.length, '개');
                     this.enrollments = updatedEnrollments;
 
                     // 내 강좌 페이지가 활성화되어 있다면 새로고침
                     if (this.currentUser && document.getElementById('my-courses').style.display !== 'none') {
+                        console.log('✅ 내 강좌 페이지 새로고침 중...');
                         this.loadMyCourses();
+                    } else {
+                        console.log('⏭️ 내 강좌 페이지 비활성 상태 - 새로고침 스킵');
                     }
                 }
             }, (error) => {
