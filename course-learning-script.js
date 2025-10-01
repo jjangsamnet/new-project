@@ -495,9 +495,8 @@ element.classList.toggle('toggle-class');</code></pre>
             const lessonVideo = document.getElementById('lesson-video');
             lessonVideo.play();
         } else {
-            // 데모용: 비디오가 없는 경우 시뮬레이션
-            alert('데모 강의입니다. 실제 비디오는 관리자가 업로드한 후 시청 가능합니다.');
-            this.simulateLessonProgress();
+            // 비디오가 없는 경우 안내
+            alert('이 강의는 아직 비디오가 업로드되지 않았습니다.\n관리자에게 문의해주세요.');
         }
     }
 

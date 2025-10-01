@@ -71,23 +71,18 @@ class AdminSystem {
                     firebaseService.getSettings()
                 ]);
 
-                this.courses = courses.length > 0 ? courses : this.getDefaultCourses();
+                this.courses = courses || [];
                 this.users = users || [];
                 this.enrollments = enrollments;
                 this.settings = settings || this.getDefaultSettings();
 
-                // 초기 데이터가 없으면 기본값 저장
-                if (courses.length === 0) {
-                    for (const course of this.getDefaultCourses()) {
-                        await firebaseService.saveCourse(course);
-                    }
-                }
+                // 초기 설정이 없으면 기본값 저장
                 if (!settings) {
                     await firebaseService.saveSettings(this.getDefaultSettings());
                 }
             } else {
                 // 로컬 스토리지 폴백
-                this.courses = JSON.parse(localStorage.getItem('lms_courses')) || this.getDefaultCourses();
+                this.courses = JSON.parse(localStorage.getItem('lms_courses')) || [];
                 this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
                 this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
                 this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
@@ -95,7 +90,7 @@ class AdminSystem {
         } catch (error) {
             console.error('데이터 로드 오류:', error);
             // 오류 시 로컬 스토리지 사용
-            this.courses = JSON.parse(localStorage.getItem('lms_courses')) || this.getDefaultCourses();
+            this.courses = JSON.parse(localStorage.getItem('lms_courses')) || [];
             this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
             this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
             this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
@@ -347,50 +342,8 @@ class AdminSystem {
     }
 
     getDefaultCourses() {
-        return [
-            {
-                id: 1,
-                title: "JavaScript 완전정복",
-                instructor: "김개발",
-                category: "programming",
-                price: "₩150,000",
-                duration: "8주",
-                level: "초급",
-                rating: 4.8,
-                students: 1205,
-                status: "active",
-                description: "JavaScript의 기본부터 고급 개념까지 체계적으로 학습할 수 있는 강좌입니다.",
-                curriculum: ["JavaScript 기본 문법", "DOM 조작 및 이벤트 처리", "비동기 프로그래밍", "ES6+ 최신 문법", "실전 프로젝트"]
-            },
-            {
-                id: 2,
-                title: "React 마스터클래스",
-                instructor: "이프론트",
-                category: "programming",
-                price: "₩200,000",
-                duration: "10주",
-                level: "중급",
-                rating: 4.9,
-                students: 856,
-                status: "active",
-                description: "React를 이용한 현대적인 웹 애플리케이션 개발을 배우는 강좌입니다.",
-                curriculum: ["React 기본 개념", "컴포넌트와 Props", "State와 생명주기", "Hooks 활용", "Redux를 이용한 상태 관리"]
-            },
-            {
-                id: 3,
-                title: "UI/UX 디자인 기초",
-                instructor: "박디자인",
-                category: "design",
-                price: "₩120,000",
-                duration: "6주",
-                level: "초급",
-                rating: 4.7,
-                students: 634,
-                status: "active",
-                description: "사용자 중심의 디자인 사고와 실무에서 바로 활용할 수 있는 UI/UX 디자인 스킬을 배우는 강좌입니다.",
-                curriculum: ["디자인 씽킹", "사용자 리서치", "와이어프레임 제작", "프로토타이핑", "사용성 테스트"]
-            }
-        ];
+        // 기본 강좌 없음 - 관리자가 직접 추가해야 함
+        return [];
     }
 
     getDefaultSettings() {
