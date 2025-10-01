@@ -59,11 +59,15 @@ class CourseLearningSystem {
 
     async loadCourse(courseId) {
         try {
+            console.log('🔍 강좌 로딩 시작, courseId:', courseId, '타입:', typeof courseId);
+
             // LMS 시스템과 동일한 방식으로 강좌 데이터 로드
             let courses = [];
             if (this.isFirebaseReady) {
+                console.log('📡 Firebase에서 강좌 데이터 로드');
                 courses = await firebaseService.getCourses();
             } else {
+                console.log('💾 로컬 스토리지에서 강좌 데이터 로드');
                 // 로컬 스토리지에서 강좌 데이터 로드 또는 기본 데이터 사용
                 const localCourses = localStorage.getItem('lms_courses');
                 if (localCourses) {
@@ -73,8 +77,17 @@ class CourseLearningSystem {
                 }
             }
 
-            // 해당 courseId의 강좌 찾기
-            this.currentCourse = courses.find(course => course.id === courseId);
+            console.log('📚 로드된 강좌 수:', courses.length);
+            console.log('강좌 ID 목록:', courses.map(c => ({id: c.id, type: typeof c.id, title: c.title})));
+
+            // 해당 courseId의 강좌 찾기 (타입 변환 고려)
+            this.currentCourse = courses.find(course => {
+                const match = course.id == courseId; // == 사용하여 타입 자동 변환
+                console.log(`비교: course.id(${course.id}, ${typeof course.id}) == courseId(${courseId}, ${typeof courseId}) => ${match}`);
+                return match;
+            });
+
+            console.log('찾은 강좌:', this.currentCourse ? this.currentCourse.title : 'null');
 
             if (!this.currentCourse) {
                 alert('강좌를 찾을 수 없습니다.');
