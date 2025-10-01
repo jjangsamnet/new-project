@@ -11,36 +11,74 @@ class LMSSystem {
         this.currentUser = null;
         this.enrollments = [];
 
+        // Firebase 리스너 unsubscribe 함수 저장
+        this.unsubscribers = [];
+
+        // DOM 이벤트 리스너 추적
+        this.eventListeners = [];
+
         this.initializeWithFirebase();
     }
 
     async initializeWithFirebase() {
-        // Firebase 서비스 준비 대기
-        await firebaseService.waitForFirebase();
-        this.isFirebaseReady = firebaseService.isFirebaseReady;
+        try {
+            // 로딩 표시
+            if (typeof showLoading !== 'undefined') {
+                showLoading('시스템 초기화 중...');
+            }
 
-        // 데이터 로드
-        await this.loadData();
+            // Firebase 서비스 준비 대기
+            await firebaseService.waitForFirebase();
+            this.isFirebaseReady = firebaseService.isFirebaseReady;
 
-        // 일반 초기화
-        this.init();
+            // 데이터 로드
+            await this.loadData();
+
+            // 일반 초기화
+            this.init();
+        } finally {
+            // 로딩 숨김
+            if (typeof hideLoading !== 'undefined') {
+                // 약간의 지연 후 숨김 (사용자 경험 개선)
+                setTimeout(() => hideLoading(), 300);
+            }
+        }
+    }
+
+    // 고유 ID 생성 (UUID v4 간소화 버전)
+    generateUniqueId() {
+        return Date.now() + '-' + Math.random().toString(36).substring(2, 15);
     }
 
     async loadData() {
         try {
-            // Firebase에서 데이터 로드
+            // Firebase에서 데이터 로드 (페이지네이션 사용)
             if (this.isFirebaseReady) {
                 console.log('🔥 Firebase에서 데이터 로드 시작...');
 
-                const [courses, enrollments, settings] = await Promise.all([
-                    firebaseService.getCourses(),
-                    firebaseService.getEnrollments(),
+                // 일반 사용자: 첫 페이지만 로드 (50개)
+                // 관리자: getAllCourses() 사용 권장
+                const [coursesResult, enrollmentsResult, settings] = await Promise.all([
+                    firebaseService.getCourses({ limit: 50 }),
+                    firebaseService.getEnrollments({
+                        limit: 100,
+                        userId: this.currentUser?.id  // 본인 수강신청만
+                    }),
                     firebaseService.getSettings()
                 ]);
+
+                // 페이지네이션 결과 처리
+                const courses = coursesResult.courses || coursesResult;
+                const enrollments = enrollmentsResult.enrollments || enrollmentsResult;
 
                 console.log(`📚 로드된 강좌 수: ${courses.length}`);
                 console.log(`🎓 로드된 수강신청 수: ${enrollments.length}`);
                 console.log(`⚙️ 로드된 설정:`, settings);
+
+                // 다음 페이지 로드를 위한 커서 저장
+                this.coursesLastDoc = coursesResult.lastDoc;
+                this.enrollmentsLastDoc = enrollmentsResult.lastDoc;
+                this.hasMoreCourses = coursesResult.hasMore;
 
                 // Firebase에서 강좌 데이터가 없으면 기본 데이터 사용
                 if (courses.length === 0) {
@@ -67,13 +105,13 @@ class LMSSystem {
                 this.setupFirebaseListeners();
             } else {
                 console.log('💾 Firebase 비활성화 - localStorage 사용');
-                // 로컬 스토리지 폴백
-                this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
-                this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
-                this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+                // 로컬 스토리지 폴백 (안전한 JSON 파싱)
+                this.users = this.safeParseJSON(localStorage.getItem('lms_users'), this.getDefaultUsers());
+                this.currentUser = this.safeParseJSON(localStorage.getItem('lms_current_user'), null);
+                this.enrollments = this.safeParseJSON(localStorage.getItem('lms_enrollments'), []);
 
                 // 설정 로드 및 적용
-                const localSettings = JSON.parse(localStorage.getItem('lms_settings')) || {};
+                const localSettings = this.safeParseJSON(localStorage.getItem('lms_settings'), {});
                 this.settings = { ...this.getDefaultSettings(), ...localSettings };
                 console.log('💾 로컬 설정 로드 완료:', this.settings);
                 this.applySettings();
@@ -84,18 +122,28 @@ class LMSSystem {
 
         } catch (error) {
             console.error('데이터 로드 오류:', error);
-            // 오류 시 로컬 스토리지 사용
-            this.users = JSON.parse(localStorage.getItem('lms_users')) || this.getDefaultUsers();
-            this.currentUser = JSON.parse(localStorage.getItem('lms_current_user')) || null;
-            this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
+            // 오류 시 로컬 스토리지 사용 (안전한 JSON 파싱)
+            this.users = this.safeParseJSON(localStorage.getItem('lms_users'), this.getDefaultUsers());
+            this.currentUser = this.safeParseJSON(localStorage.getItem('lms_current_user'), null);
+            this.enrollments = this.safeParseJSON(localStorage.getItem('lms_enrollments'), []);
 
             // 설정도 로컬에서 로드
-            const localSettings = JSON.parse(localStorage.getItem('lms_settings')) || {};
+            const localSettings = this.safeParseJSON(localStorage.getItem('lms_settings'), {});
             this.settings = { ...this.getDefaultSettings(), ...localSettings };
             console.log('❌ 오류 시 로컬 설정 로드:', this.settings);
             this.applySettings();
 
             this.renderCourses();
+        }
+    }
+
+    // 안전한 JSON 파싱 헬퍼 함수
+    safeParseJSON(jsonString, fallback) {
+        try {
+            return jsonString ? JSON.parse(jsonString) : fallback;
+        } catch (error) {
+            console.error('JSON 파싱 오류:', error);
+            return fallback;
         }
     }
 
@@ -123,6 +171,30 @@ class LMSSystem {
                 this.showSection(target);
             });
         });
+
+        // 강좌 검색 이벤트
+        const searchInput = document.getElementById('course-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filterCourses();
+            });
+        }
+
+        // 카테고리 필터 이벤트
+        const categoryFilter = document.getElementById('course-category-filter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', () => {
+                this.filterCourses();
+            });
+        }
+
+        // 난이도 필터 이벤트
+        const levelFilter = document.getElementById('course-level-filter');
+        if (levelFilter) {
+            levelFilter.addEventListener('change', () => {
+                this.filterCourses();
+            });
+        }
 
         // 필터 버튼 이벤트 제거됨 (카테고리 삭제)
 
@@ -169,6 +241,33 @@ class LMSSystem {
         });
     }
 
+    filterCourses() {
+        const searchInput = document.getElementById('course-search-input');
+        const categoryFilter = document.getElementById('course-category-filter');
+        const levelFilter = document.getElementById('course-level-filter');
+
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const selectedCategory = categoryFilter ? categoryFilter.value : '';
+        const selectedLevel = levelFilter ? levelFilter.value : '';
+
+        const filteredCourses = this.courses.filter(course => {
+            // 검색어 필터 (강좌명 또는 강사명)
+            const matchesSearch = !searchTerm ||
+                course.title.toLowerCase().includes(searchTerm) ||
+                course.instructor.toLowerCase().includes(searchTerm);
+
+            // 카테고리 필터
+            const matchesCategory = !selectedCategory || course.category === selectedCategory;
+
+            // 난이도 필터
+            const matchesLevel = !selectedLevel || course.level === selectedLevel;
+
+            return matchesSearch && matchesCategory && matchesLevel;
+        });
+
+        this.renderCourses(filteredCourses);
+    }
+
     renderCourses(coursesToRender = this.courses) {
         const coursesGrid = document.getElementById('courses-grid');
 
@@ -177,27 +276,42 @@ class LMSSystem {
             return;
         }
 
-        coursesGrid.innerHTML = coursesToRender.map(course => `
-            <div class="course-card" onclick="lms.showCourseDetail(${course.id})">
-                <div class="course-image">
-                    ${course.thumbnail
-                        ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover;">`
-                        : '<div class="placeholder-image">강좌 썸네일</div>'
-                    }
-                </div>
-                <div class="course-content">
-                    <h3 class="course-title">${course.title}</h3>
-                    <p class="course-instructor">강사: ${course.instructor}</p>
-                    <div class="course-footer">
-                        <span class="course-badge" style="background: #28a745; color: white; padding: 5px 12px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">무료</span>
-                        <div class="course-rating">
-                            <span>⭐ ${course.rating}</span>
-                            <span>(${course.students})</span>
+        // XSS 방지: 사용자 입력 이스케이프
+        const escapeHtml = (text) => {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return String(text || '').replace(/[&<>"']/g, (m) => map[m]);
+        };
+
+        coursesGrid.innerHTML = coursesToRender.map(course => {
+            const safeTitle = escapeHtml(course.title);
+            const safeInstructor = escapeHtml(course.instructor);
+            // URL 새니타이즈 적용
+            const sanitizedThumbnail = course.thumbnail && typeof urlSanitizer !== 'undefined'
+                ? urlSanitizer.sanitizeImageURL(course.thumbnail)
+                : course.thumbnail;
+
+            return `
+                <div class="course-card" onclick="lms.showCourseDetail(${course.id})">
+                    <div class="course-image">
+                        ${sanitizedThumbnail
+                            ? `<img src="${escapeHtml(sanitizedThumbnail)}" alt="${safeTitle}" style="width: 100%; height: 100%; object-fit: cover;">`
+                            : '<div class="placeholder-image">강좌 썸네일</div>'
+                        }
+                    </div>
+                    <div class="course-content">
+                        <h3 class="course-title">${safeTitle}</h3>
+                        <p class="course-instructor">강사: ${safeInstructor}</p>
+                        <div class="course-footer">
+                            <span class="course-badge" style="background: #28a745; color: white; padding: 5px 12px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">무료</span>
+                            <div class="course-rating">
+                                <span>⭐ ${course.rating}</span>
+                                <span>(${course.students})</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     // 카테고리 관련 함수 제거됨
@@ -373,32 +487,64 @@ class LMSSystem {
             return;
         }
 
-        // 수강신청 정보 저장
+        // Rate limiting 체크
+        if (typeof rateLimiter !== 'undefined') {
+            const limitCheck = rateLimiter.checkLimit('enrollment', this.currentUser.id);
+            if (!limitCheck.allowed) {
+                alert(limitCheck.message);
+                return;
+            }
+        }
+
+        // 수강신청 정보 저장 (ID는 Firebase가 자동 생성하거나 UUID 사용)
         const enrollment = {
-            id: Date.now(),
+            // ID는 Firebase에서 자동 생성하거나, localStorage에서 고유 ID 생성
+            id: this.isFirebaseReady ? null : this.generateUniqueId(),
             userId: this.currentUser.id,
             courseId: courseId,
             paymentMethod: 'free',  // 무료 강좌
             enrolledAt: new Date().toISOString(),
-            status: 'enrolled'
+            status: 'enrolled',
+            progress: 0
         };
-
-        console.log('💾 수강신청 생성 중...');
-        console.log('수강신청 정보:', enrollment);
-        console.log('현재 사용자 ID:', this.currentUser.id);
-        console.log('현재 사용자 authMethod:', this.currentUser.authMethod);
 
         try {
             // Firebase에 수강신청 저장
             const result = await firebaseService.saveEnrollment(enrollment);
-            console.log('Firebase 저장 결과:', result);
 
-            if (result.success || !this.isFirebaseReady) {
+            if (result.success) {
+                // Firebase가 생성한 ID 사용
+                enrollment.id = result.enrollmentId || enrollment.id;
+                this.enrollments.push(enrollment);
+
+                // Rate limiter 성공 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('enrollment', this.currentUser.id, true);
+                }
+
+                // 내 강좌 목록 새로고침
+                await this.loadMyCourses();
+
+                alert('수강신청이 완료되었습니다!');
+                this.closeModal('enrollment-modal');
+
+            } else if (result.isDuplicate) {
+                // 중복 수강신청
+                alert(result.error || '이미 수강신청한 강좌입니다.');
+                this.closeModal('enrollment-modal');
+
+            } else if (!this.isFirebaseReady) {
+                // Firebase 없을 때 로컬 저장
                 this.enrollments.push(enrollment);
 
                 // 로컬 스토리지에도 백업 저장 (Firebase 실패 시 대비)
                 if (!this.isFirebaseReady) {
                     localStorage.setItem('lms_enrollments', JSON.stringify(this.enrollments));
+                }
+
+                // Rate limiter 성공 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('enrollment', this.currentUser.id, true);
                 }
 
                 // 내 강좌 목록 새로고침
@@ -407,10 +553,21 @@ class LMSSystem {
                 alert('수강신청이 완료되었습니다!');
                 this.closeModal('enrollment-modal');
             } else {
+                // Rate limiter 실패 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('enrollment', this.currentUser.id, false);
+                }
+
                 alert('수강신청 중 오류가 발생했습니다.');
             }
         } catch (error) {
             console.error('수강신청 오류:', error);
+
+            // Rate limiter 실패 기록
+            if (typeof rateLimiter !== 'undefined') {
+                rateLimiter.recordAttempt('enrollment', this.currentUser.id, false);
+            }
+
             alert('수강신청 중 오류가 발생했습니다.');
         }
     }
@@ -488,60 +645,47 @@ class LMSSystem {
         enrolledCoursesContainer.style.display = 'block';
         emptyCoursesContainer.style.display = 'none';
 
-        // 수강중인 강좌들 렌더링
-        console.log('📚 강좌 찾기 시작...');
-        console.log('전체 강좌 수:', this.courses.length);
-        console.log('전체 강좌 ID 목록:', this.courses.map(c => c.id));
+        // 성능 최적화: Course Map 생성 (O(n) → O(1) 조회)
+        const courseMap = new Map(this.courses.map(c => [c.id, c]));
 
-        const enrolledCourses = userEnrollments.map(enrollment => {
-            console.log('수강신청 courseId로 강좌 찾기:', enrollment.courseId);
-            const foundCourse = this.courses.find(course => {
-                console.log('  비교:', course.id, '===', enrollment.courseId, '?', course.id === enrollment.courseId);
-                return course.id === enrollment.courseId;
-            });
-            console.log('찾은 강좌:', foundCourse ? foundCourse.title : 'null');
-            return foundCourse;
-        }).filter(course => course); // null 값 제거
+        // 수강중인 강좌들 렌더링 (최적화됨)
+        const enrolledCourseIds = new Set(userEnrollments.map(e => e.courseId));
+        const enrolledCourses = Array.from(enrolledCourseIds)
+            .map(courseId => courseMap.get(courseId))
+            .filter(course => course); // null 값 제거
 
-        // 중복 강좌 제거 (같은 courseId를 가진 강좌가 여러 개 있을 경우)
-        const uniqueCourses = enrolledCourses.filter((course, index, self) =>
-            index === self.findIndex(c => c.id === course.id)
-        );
-
-        console.log('중복 제거 전:', enrolledCourses.length, '개');
-        console.log('최종 enrolledCourses:', uniqueCourses.length, '개');
-        console.log('렌더링할 강좌들:', uniqueCourses.map(c => c.title));
-
-        const renderedHtml = this.renderMyCoursesGrid(uniqueCourses);
-        console.log('생성된 HTML 길이:', renderedHtml.length);
-
+        const renderedHtml = this.renderMyCoursesGrid(enrolledCourses);
         enrolledCoursesContainer.innerHTML = renderedHtml;
-
-        console.log('✅ innerHTML 할당 완료');
-        console.log('할당 후 실제 innerHTML 길이:', enrolledCoursesContainer.innerHTML.length);
     }
 
     renderMyCoursesGrid(courses) {
+        // 성능 최적화: 진도율 Map 미리 계산
+        const progressMap = new Map();
+        this.enrollments
+            .filter(e => e.userId === this.currentUser.id)
+            .forEach(e => {
+                const currentProgress = progressMap.get(e.courseId) || 0;
+                progressMap.set(e.courseId, Math.max(currentProgress, e.progress || 0));
+            });
+
         return `
             <div class="my-courses-grid">
                 ${courses.map(course => {
-                    // 해당 강좌의 모든 enrollment 찾기 (중복 가능)
-                    const userEnrollments = this.enrollments.filter(e =>
-                        e.userId === this.currentUser.id &&
-                        e.courseId === course.id
-                    );
+                    // Map에서 O(1)로 진도율 조회
+                    const progress = progressMap.get(course.id) || 0;
 
-                    // 가장 높은 진도율 선택
-                    let progress = 0;
-                    if (userEnrollments.length > 0) {
-                        progress = Math.max(...userEnrollments.map(e => e.progress || 0));
-                    }
+                    // URL 새니타이즈 적용
+                    const sanitizedThumbnail = course.thumbnail && typeof urlSanitizer !== 'undefined'
+                        ? urlSanitizer.sanitizeImageURL(course.thumbnail)
+                        : course.thumbnail;
+                    const safeTitle = this.escapeHtml(course.title);
+                    const safeInstructor = this.escapeHtml(course.instructor);
 
                     return `
                         <div class="my-course-card">
                             <div class="course-thumbnail">
-                                ${course.thumbnail
-                                    ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`
+                                ${sanitizedThumbnail
+                                    ? `<img src="${this.escapeHtml(sanitizedThumbnail)}" alt="${safeTitle}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`
                                     : `<div class="placeholder-image"><span>강좌 썸네일</span></div>`
                                 }
                                 <div class="course-progress">
@@ -552,8 +696,8 @@ class LMSSystem {
                                 </div>
                             </div>
                             <div class="course-content">
-                                <h3 class="course-title">${course.title}</h3>
-                                <p class="course-instructor">강사: ${course.instructor}</p>
+                                <h3 class="course-title">${safeTitle}</h3>
+                                <p class="course-instructor">강사: ${safeInstructor}</p>
                                 <div class="course-actions">
                                     <button class="btn btn-primary" onclick="continueLearning(${course.id})">학습 계속하기</button>
                                     <button class="btn btn-outline" onclick="viewCourseDetail(${course.id})">강좌 정보</button>
@@ -571,6 +715,15 @@ class LMSSystem {
         console.log('📧 로그인 함수 시작:', { email, firebaseReady: this.isFirebaseReady });
 
         try {
+            // Rate limiting 체크
+            if (typeof rateLimiter !== 'undefined') {
+                const limitCheck = rateLimiter.checkLimit('login', email);
+                if (!limitCheck.allowed) {
+                    alert(limitCheck.message);
+                    return false;
+                }
+            }
+
             let loginResult = { success: false, user: null, method: null };
 
             // Firebase 로그인 시도
@@ -640,6 +793,11 @@ class LMSSystem {
                     console.warn('localStorage 저장 실패:', storageError);
                 }
 
+                // Rate limiter 성공 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('login', email, true);
+                }
+
                 this.updateAuthUI();
                 await this.loadMyCourses();
                 this.closeAllModals();
@@ -649,6 +807,11 @@ class LMSSystem {
 
             } else {
                 console.log('❌ 모든 로그인 방법 실패');
+
+                // Rate limiter 실패 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('login', email, false);
+                }
 
                 // 사용자에게 구체적인 오류 정보 제공
                 const foundUser = this.users.find(u => u.email === email);
@@ -673,6 +836,12 @@ class LMSSystem {
 
         } catch (error) {
             console.error('로그인 전체 오류:', error);
+
+            // Rate limiter 실패 기록
+            if (typeof rateLimiter !== 'undefined') {
+                rateLimiter.recordAttempt('login', email, false);
+            }
+
             alert('로그인 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
             return false;
         }
@@ -682,6 +851,15 @@ class LMSSystem {
         console.log('📝 회원가입 시작:', { email: userData.email, firebaseReady: this.isFirebaseReady });
 
         try {
+            // Rate limiting 체크
+            if (typeof rateLimiter !== 'undefined') {
+                const limitCheck = rateLimiter.checkLimit('register', userData.email);
+                if (!limitCheck.allowed) {
+                    alert(limitCheck.message);
+                    return false;
+                }
+            }
+
             let registrationResult = { success: false, user: null, method: null };
 
             // Firebase 회원가입 시도
@@ -758,18 +936,35 @@ class LMSSystem {
                     }
                 }
 
+                // Rate limiter 성공 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('register', userData.email, true);
+                }
+
                 alert(`회원가입이 완료되었습니다! (${registrationResult.method})`);
                 this.closeAllModals();
                 return true;
 
             } else {
                 console.log('❌ 모든 회원가입 방법 실패');
+
+                // Rate limiter 실패 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('register', userData.email, false);
+                }
+
                 alert('회원가입에 실패했습니다. 다시 시도해주세요.');
                 return false;
             }
 
         } catch (error) {
             console.error('회원가입 전체 오류:', error);
+
+            // Rate limiter 실패 기록
+            if (typeof rateLimiter !== 'undefined') {
+                rateLimiter.recordAttempt('register', userData.email, false);
+            }
+
             alert('회원가입 중 오류가 발생했습니다.');
             return false;
         }
@@ -1022,11 +1217,14 @@ class LMSSystem {
             return;
         }
 
+        // 기존 리스너 정리
+        this.cleanupListeners();
+
         console.log('🔔 Firebase 실시간 리스너 설정 중...');
 
         try {
             // 강좌 데이터 실시간 리스너
-            db.collection('courses').onSnapshot((snapshot) => {
+            const coursesUnsubscribe = db.collection('courses').onSnapshot((snapshot) => {
                 console.log('🔄 강좌 데이터 실시간 업데이트 감지');
 
                 const updatedCourses = snapshot.docs.map(doc => ({
@@ -1046,9 +1244,10 @@ class LMSSystem {
             }, (error) => {
                 console.error('강좌 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(coursesUnsubscribe);
 
             // 수강신청 데이터 실시간 리스너
-            db.collection('enrollments').onSnapshot((snapshot) => {
+            const enrollmentsUnsubscribe = db.collection('enrollments').onSnapshot((snapshot) => {
                 console.log('🔄 수강신청 데이터 실시간 업데이트 감지');
 
                 const updatedEnrollments = snapshot.docs.map(doc => ({
@@ -1079,9 +1278,10 @@ class LMSSystem {
             }, (error) => {
                 console.error('수강신청 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(enrollmentsUnsubscribe);
 
             // 설정 데이터 실시간 리스너
-            db.collection('settings').doc('main').onSnapshot((doc) => {
+            const settingsUnsubscribe = db.collection('settings').doc('main').onSnapshot((doc) => {
                 console.log('🔄 설정 데이터 실시간 업데이트 감지');
 
                 if (doc.exists) {
@@ -1102,9 +1302,10 @@ class LMSSystem {
             }, (error) => {
                 console.error('설정 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(settingsUnsubscribe);
 
             // 사용자 데이터 실시간 리스너
-            db.collection('users').onSnapshot((snapshot) => {
+            const usersUnsubscribe = db.collection('users').onSnapshot((snapshot) => {
                 console.log('🔄 사용자 데이터 실시간 업데이트 감지');
 
                 const updatedUsers = snapshot.docs.map(doc => ({
@@ -1120,12 +1321,35 @@ class LMSSystem {
             }, (error) => {
                 console.error('사용자 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(usersUnsubscribe);
 
-            console.log('✅ Firebase 실시간 리스너 설정 완료');
+            console.log('✅ Firebase 실시간 리스너 설정 완료 (총', this.unsubscribers.length, '개)');
 
         } catch (error) {
             console.error('Firebase 리스너 설정 오류:', error);
         }
+    }
+
+    // Firebase 리스너 정리
+    cleanupListeners() {
+        if (this.unsubscribers.length > 0) {
+            console.log('🧹 Firebase 리스너 정리 중...', this.unsubscribers.length, '개');
+            this.unsubscribers.forEach(unsubscribe => {
+                try {
+                    unsubscribe();
+                } catch (error) {
+                    console.error('리스너 정리 오류:', error);
+                }
+            });
+            this.unsubscribers = [];
+            console.log('✅ Firebase 리스너 정리 완료');
+        }
+    }
+
+    // 페이지 언로드 시 리스너 정리
+    destroy() {
+        console.log('🔻 LMS 시스템 종료 중...');
+        this.cleanupListeners();
     }
 
     // 데이터 업데이트 알림 표시
@@ -1656,6 +1880,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
 
     console.log('LMS 시스템이 초기화되었습니다.');
+});
+
+// 페이지 언로드 시 리스너 정리
+window.addEventListener('beforeunload', () => {
+    console.log('📴 페이지 종료 - 리소스 정리 중...');
+    lms.destroy();
+});
+
+// 페이지 숨김 시에도 정리 (모바일 대응)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('👻 페이지 숨김 - 리소스 일시 정리');
+        // 필요시 리스너 일시 정지 로직 추가 가능
+    }
 });
 
 // 개발자 도구용 전역 디버그 함수들

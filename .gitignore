@@ -1,29 +1,5 @@
-# 운영체제 관련 파일
-.DS_Store
-Thumbs.db
-
-# 에디터 관련 파일
-.vscode/
-.idea/
-
-# 로그 파일
-*.log
-
-# 임시 파일
-*.tmp
-
-# Firebase 실제 설정 파일들 (보안상 제외)
+# Firebase 로컬 설정 (실제 API 키 포함)
 firebase-config.local.js
-firebase-config.prod.js
 
-# 환경 변수 파일들
-.env
-.env.local
-.env.production
-.env.development
-
-# API 키 및 비밀 정보
-config/secrets.js
-secrets/
-*.key
-*.pem
+# 관리자 로컬 설정 (실제 관리자 계정 정보 포함)
+admin-config.local.js

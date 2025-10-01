@@ -1,29 +1,154 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /courses/{courseId} {
-      allow read: if true;
-      allow write: if true;
+
+    // 헬퍼 함수: 사용자 인증 확인
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
+    // 헬퍼 함수: 관리자 권한 확인 (커스텀 클레임 또는 별도 컬렉션 사용)
+    function isAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // 헬퍼 함수: 본인 확인
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ======================
+    // Users 컬렉션
+    // ======================
     match /users/{userId} {
-      allow read: if true;
-      allow write: if true;
+      // 읽기: 본인만 가능
+      allow read: if isOwner(userId);
+
+      // 생성: 본인 계정만 생성 가능
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['email', 'name']) &&
+                       request.resource.data.email == request.auth.token.email;
+
+      // 수정: 본인만 가능, 특정 필드만 수정 허용
+      allow update: if isOwner(userId) &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['name', 'phone', 'affiliation', 'organization', 'region', 'updatedAt']);
+
+      // 삭제: 본인만 가능
+      allow delete: if isOwner(userId);
     }
 
+    // ======================
+    // Courses 컬렉션
+    // ======================
+    match /courses/{courseId} {
+      // 읽기: 인증된 모든 사용자
+      allow read: if isAuthenticated();
+
+      // 생성, 수정, 삭제: 관리자만
+      allow write: if isAdmin();
+    }
+
+    // ======================
+    // Enrollments 컬렉션
+    // ======================
     match /enrollments/{enrollmentId} {
-      allow read: if true;
-      allow write: if true;
+      // 읽기: 본인 수강신청만 조회 가능
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+
+      // 생성: 본인 이름으로만 수강신청 가능
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'courseId', 'enrolledAt']);
+
+      // 수정: 본인 수강신청의 진도율만 업데이트 가능
+      allow update: if isOwner(resource.data.userId) &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['progress', 'lastAccessedAt', 'updatedAt']);
+
+      // 삭제: 금지 (관리자도 삭제 불가 - 데이터 보존)
+      allow delete: if false;
     }
 
+    // ======================
+    // Completions 컬렉션 (이수자 명단)
+    // ======================
+    match /completions/{completionId} {
+      // 읽기: 관리자만
+      allow read: if isAdmin();
+
+      // 생성: 시스템에서 자동 생성 (진도율 90% 이상 시)
+      // 실제로는 Cloud Functions에서 처리하는 것이 안전
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.progress >= 90;
+
+      // 수정, 삭제: 금지
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ======================
+    // Settings 컬렉션
+    // ======================
     match /settings/{settingId} {
-      allow read: if true;
-      allow write: if true;
+      // 읽기: 인증된 사용자
+      allow read: if isAuthenticated();
+
+      // 쓰기: 관리자만
+      allow write: if isAdmin();
     }
 
+    // ======================
+    // Admins 컬렉션 (관리자 목록)
+    // ======================
+    match /admins/{adminId} {
+      // 읽기: 본인 문서만 조회 가능
+      allow read: if isOwner(adminId);
+
+      // 쓰기: 금지 (관리자는 Firebase Console에서만 추가)
+      allow write: if false;
+    }
+
+    // ======================
+    // Lessons 서브컬렉션 (courses/{courseId}/lessons/{lessonId})
+    // ======================
+    match /courses/{courseId}/lessons/{lessonId} {
+      // 읽기: 인증된 모든 사용자
+      allow read: if isAuthenticated();
+
+      // 쓰기: 관리자만
+      allow write: if isAdmin();
+    }
+
+    // ======================
+    // Analytics 컬렉션 (통계 데이터)
+    // ======================
+    match /analytics/{docId} {
+      // 읽기: 관리자만
+      allow read: if isAdmin();
+
+      // 쓰기: Cloud Functions에서만
+      allow write: if false;
+    }
+
+    // ======================
+    // Connection Test (개발/테스트 전용)
+    // ======================
     match /connection-test/{docId} {
-      allow read: if true;
-      allow write: if true;
+      // 읽기/쓰기: 인증된 사용자 (운영 환경에서는 제거)
+      allow read, write: if isAuthenticated();
+    }
+
+    // ======================
+    // 기본 규칙: 모든 다른 경로는 차단
+    // ======================
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

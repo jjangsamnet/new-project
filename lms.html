@@ -56,6 +56,26 @@
         <section id="courses" class="courses-section">
             <div class="container">
                 <h2 class="section-title">강좌</h2>
+
+                <!-- 검색 및 필터 -->
+                <div class="course-filters">
+                    <input type="text" id="course-search-input" class="search-input" placeholder="강좌명, 강사명으로 검색...">
+                    <select id="course-category-filter" class="filter-select">
+                        <option value="">모든 카테고리</option>
+                        <option value="프로그래밍">프로그래밍</option>
+                        <option value="디자인">디자인</option>
+                        <option value="비즈니스">비즈니스</option>
+                        <option value="언어">언어</option>
+                        <option value="기타">기타</option>
+                    </select>
+                    <select id="course-level-filter" class="filter-select">
+                        <option value="">모든 난이도</option>
+                        <option value="초급">초급</option>
+                        <option value="중급">중급</option>
+                        <option value="고급">고급</option>
+                    </select>
+                </div>
+
                 <div class="courses-grid" id="courses-grid">
                     <!-- 강좌 카드들이 동적으로 생성됩니다 -->
                 </div>
@@ -544,21 +564,37 @@
         </div>
     </footer>
 
+    <!-- 전역 오류 핸들러 (가장 먼저 로드) -->
+    <script src="error-handler.js?v=2024120310"></script>
+
+    <!-- 유틸리티 -->
+    <script src="validation-utils.js?v=2024120310"></script>
+    <script src="loading-indicator.js?v=2024120310"></script>
+    <script src="url-sanitizer.js?v=2024120310"></script>
+    <script src="rate-limiter.js?v=2024120310"></script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 
     <!-- Firebase 설정 -->
-    <script src="firebase-config.js?v=2024120309"></script>
+    <script src="firebase-config.js?v=2024120310"></script>
     <!-- 로컬 Firebase 설정 (GitHub Pages에서는 사용 안 함) -->
     <!-- <script src="firebase-config.local.js" onerror="console.log('로컬 Firebase 설정 파일이 없습니다.')"></script> -->
 
-    <!-- Firebase 서비스 레이어 -->
-    <script src="firebase-service.js?v=2024120309"></script>
+    <!-- 암호화 유틸리티 -->
+    <script src="crypto-utils.js?v=2024120310"></script>
 
-    <script src="lms-script.js?v=2024120309"></script>
+    <!-- Firebase 서비스 레이어 -->
+    <script src="firebase-service.js?v=2024120310"></script>
+
+    <!-- Firebase App Check (CSRF 보호) -->
+    <script src="firebase-app-check.js?v=2024120310"></script>
+
+    <script src="lms-script.js?v=2024120310"></script>
 </body>
 </html>

@@ -182,8 +182,44 @@ class FirebaseService {
         }
     }
 
-    // 강좌 데이터 관리
-    async getCourses() {
+    // 강좌 데이터 관리 (페이지네이션 지원)
+    async getCourses(options = {}) {
+        if (!this.isFirebaseReady) {
+            return this.fallbackToLocal('getCourses');
+        }
+
+        const {
+            limit = 50,  // 기본 50개씩 로드
+            startAfter = null,  // 마지막 문서 (다음 페이지용)
+            orderBy = 'id',
+            orderDirection = 'asc'
+        } = options;
+
+        try {
+            let query = db.collection(this.collections.courses)
+                .orderBy(orderBy, orderDirection)
+                .limit(limit);
+
+            // 다음 페이지 로드 시
+            if (startAfter) {
+                query = query.startAfter(startAfter);
+            }
+
+            const snapshot = await query.get();
+
+            return {
+                courses: snapshot.docs.map(doc => ({ ...doc.data(), firebaseId: doc.id })),
+                lastDoc: snapshot.docs[snapshot.docs.length - 1],  // 다음 페이지용
+                hasMore: snapshot.docs.length === limit  // 더 있는지 여부
+            };
+        } catch (error) {
+            console.error('강좌 데이터 가져오기 오류:', error);
+            return this.fallbackToLocal('getCourses');
+        }
+    }
+
+    // 모든 강좌 가져오기 (관리자용, 캐싱 권장)
+    async getAllCourses() {
         if (!this.isFirebaseReady) {
             return this.fallbackToLocal('getCourses');
         }
@@ -237,8 +273,48 @@ class FirebaseService {
         }
     }
 
-    // 수강신청 관리
-    async getEnrollments() {
+    // 수강신청 관리 (페이지네이션 지원)
+    async getEnrollments(options = {}) {
+        if (!this.isFirebaseReady) {
+            return this.fallbackToLocal('getEnrollments');
+        }
+
+        const {
+            limit = 100,  // 기본 100개씩 로드
+            startAfter = null,
+            userId = null  // 특정 사용자 수강신청만 조회
+        } = options;
+
+        try {
+            let query = db.collection(this.collections.enrollments)
+                .orderBy('enrolledAt', 'desc')
+                .limit(limit);
+
+            // 특정 사용자 필터링
+            if (userId) {
+                query = query.where('userId', '==', userId);
+            }
+
+            // 페이지네이션
+            if (startAfter) {
+                query = query.startAfter(startAfter);
+            }
+
+            const snapshot = await query.get();
+
+            return {
+                enrollments: snapshot.docs.map(doc => ({ ...doc.data(), firebaseId: doc.id })),
+                lastDoc: snapshot.docs[snapshot.docs.length - 1],
+                hasMore: snapshot.docs.length === limit
+            };
+        } catch (error) {
+            console.error('수강신청 데이터 가져오기 오류:', error);
+            return this.fallbackToLocal('getEnrollments');
+        }
+    }
+
+    // 모든 수강신청 가져오기 (관리자용)
+    async getAllEnrollments() {
         if (!this.isFirebaseReady) {
             return this.fallbackToLocal('getEnrollments');
         }
@@ -258,13 +334,47 @@ class FirebaseService {
         }
 
         try {
-            await db.collection(this.collections.enrollments).add({
-                ...enrollmentData,
-                enrolledAt: firebase.firestore.FieldValue.serverTimestamp()
+            // Firestore Transaction을 사용하여 중복 수강신청 방지
+            const result = await db.runTransaction(async (transaction) => {
+                const enrollmentsRef = db.collection(this.collections.enrollments);
+
+                // 1. 중복 체크: 같은 사용자가 같은 강좌에 이미 수강신청했는지 확인
+                const duplicateQuery = await enrollmentsRef
+                    .where('userId', '==', enrollmentData.userId)
+                    .where('courseId', '==', enrollmentData.courseId)
+                    .get();
+
+                if (!duplicateQuery.empty) {
+                    throw new Error('이미 수강신청한 강좌입니다.');
+                }
+
+                // 2. 새 수강신청 문서 생성
+                const newEnrollmentRef = enrollmentsRef.doc(); // 고유 ID 생성
+                transaction.set(newEnrollmentRef, {
+                    ...enrollmentData,
+                    id: newEnrollmentRef.id,
+                    enrolledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                return newEnrollmentRef.id;
             });
-            return { success: true };
+
+            // Transaction 성공
+            return {
+                success: true,
+                enrollmentId: result,
+                firebaseId: result
+            };
+
         } catch (error) {
             console.error('수강신청 저장 오류:', error);
+
+            // 중복 오류인 경우 명확한 메시지
+            if (error.message.includes('이미 수강신청')) {
+                return { success: false, error: error.message, isDuplicate: true };
+            }
+
             return { success: false, error: error.message };
         }
     }
@@ -408,19 +518,67 @@ class FirebaseService {
         }
     }
 
-    localSignIn(email, password) {
+    async localSignIn(email, password) {
         const users = JSON.parse(localStorage.getItem('lms_users')) || [];
-        const user = users.find(u => u.email === email && u.password === password);
 
-        if (user) {
-            localStorage.setItem('lms_current_user', JSON.stringify(user));
-            return { success: true, user: user };
+        // 이메일로 사용자 찾기
+        const user = users.find(u => u.email === email);
+
+        if (!user) {
+            return { success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' };
+        }
+
+        // 비밀번호 검증
+        let isPasswordValid = false;
+
+        // cryptoUtils가 없으면 로그인 차단
+        if (typeof cryptoUtils === 'undefined') {
+            console.error('❌ 암호화 유틸리티가 로드되지 않았습니다.');
+            return { success: false, error: '시스템 오류가 발생했습니다. 페이지를 새로고침 해주세요.' };
+        }
+
+        // 해싱된 비밀번호인지 확인 (salt$hash 형식)
+        if (user.password && user.password.includes('$')) {
+            // 해싱된 비밀번호 검증
+            isPasswordValid = await cryptoUtils.verifyPassword(password, user.password);
+        } else {
+            // 평문 비밀번호는 더 이상 지원하지 않음 - 강제 마이그레이션 필요
+            console.warn('⚠️ 평문 비밀번호 감지 - 마이그레이션 필요');
+
+            // 임시로 평문 비밀번호 확인
+            const plainTextMatch = (password === user.password);
+
+            if (plainTextMatch) {
+                // 즉시 해싱된 비밀번호로 마이그레이션
+                console.log('🔄 평문 비밀번호를 해싱된 비밀번호로 마이그레이션 중...');
+                const hashedPassword = await cryptoUtils.hashPassword(password);
+                user.password = hashedPassword;
+
+                // 업데이트된 사용자 정보 저장
+                const userIndex = users.findIndex(u => u.email === email);
+                users[userIndex] = user;
+                localStorage.setItem('lms_users', JSON.stringify(users));
+                console.log('✅ 비밀번호 마이그레이션 완료');
+
+                isPasswordValid = true;
+            } else {
+                isPasswordValid = false;
+            }
+        }
+
+        if (isPasswordValid) {
+            // 응답에서 비밀번호 제거
+            const userWithoutPassword = { ...user };
+            delete userWithoutPassword.password;
+
+            localStorage.setItem('lms_current_user', JSON.stringify(userWithoutPassword));
+            return { success: true, user: userWithoutPassword };
         } else {
             return { success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' };
         }
     }
 
-    localSignUp(email, password, userData) {
+    async localSignUp(email, password, userData) {
         const users = JSON.parse(localStorage.getItem('lms_users')) || [];
         const existingUser = users.find(u => u.email === email);
 
@@ -428,12 +586,23 @@ class FirebaseService {
             return { success: false, error: '이미 존재하는 이메일입니다.' };
         }
 
+        // 비밀번호 해싱
+        let hashedPassword = password;
+        if (typeof cryptoUtils !== 'undefined') {
+            hashedPassword = await cryptoUtils.hashPassword(password);
+            console.log('🔐 비밀번호 해싱 완료');
+        } else {
+            console.warn('⚠️ cryptoUtils를 사용할 수 없어 평문으로 저장됩니다.');
+        }
+
         const newUser = {
             id: Date.now(),
             email: email,
             name: userData.name,
             phone: userData.phone,
-            password: password,
+            region: userData.region,
+            organization: userData.organization,
+            password: hashedPassword,
             authMethod: 'localStorage',
             registeredAt: new Date().toISOString()
         };
@@ -441,7 +610,11 @@ class FirebaseService {
         users.push(newUser);
         localStorage.setItem('lms_users', JSON.stringify(users));
 
-        return { success: true, user: newUser };
+        // 응답에서 비밀번호 제거
+        const userWithoutPassword = { ...newUser };
+        delete userWithoutPassword.password;
+
+        return { success: true, user: userWithoutPassword };
     }
 }
 

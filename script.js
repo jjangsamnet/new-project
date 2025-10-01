@@ -1,6 +1,13 @@
 class ProjectManager {
     constructor() {
-        this.projects = JSON.parse(localStorage.getItem('projects')) || [];
+        // 안전한 JSON 파싱
+        try {
+            this.projects = JSON.parse(localStorage.getItem('projects')) || [];
+        } catch (error) {
+            console.error('프로젝트 데이터 로드 실패:', error);
+            this.projects = [];
+            localStorage.removeItem('projects'); // 손상된 데이터 제거
+        }
         this.currentEditingId = null;
         this.init();
     }
@@ -14,13 +21,21 @@ class ProjectManager {
     bindEvents() {
         const newProjectBtn = document.getElementById('new-project-btn');
         const modal = document.getElementById('project-modal');
-        const closeBtn = modal.querySelector('.close');
+        const closeBtn = modal?.querySelector('.close');
         const cancelBtn = document.getElementById('cancel-btn');
         const projectForm = document.getElementById('project-form');
         const statusFilter = document.getElementById('status-filter');
         const searchInput = document.getElementById('search-input');
         const progressSlider = document.getElementById('project-progress');
         const progressValue = document.getElementById('progress-value');
+        const projectsGrid = document.getElementById('projects-grid');
+
+        // DOM 요소 null 체크
+        if (!newProjectBtn || !modal || !closeBtn || !cancelBtn || !projectForm ||
+            !statusFilter || !searchInput || !progressSlider || !progressValue || !projectsGrid) {
+            console.error('필수 DOM 요소를 찾을 수 없습니다.');
+            return;
+        }
 
         newProjectBtn.addEventListener('click', () => this.openModal());
         closeBtn.addEventListener('click', () => this.closeModal());
@@ -29,12 +44,30 @@ class ProjectManager {
         statusFilter.addEventListener('change', () => this.render());
         searchInput.addEventListener('input', () => this.render());
         progressSlider.addEventListener('input', (e) => {
-            progressValue.textContent = e.target.value + '%';
+            if (progressValue) {
+                progressValue.textContent = e.target.value + '%';
+            }
         });
 
         window.addEventListener('click', (e) => {
             if (e.target === modal) {
                 this.closeModal();
+            }
+        });
+
+        // 이벤트 위임: projects-grid에 한 번만 리스너 등록
+        projectsGrid.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const projectId = parseInt(button.dataset.projectId);
+
+            if (action === 'edit') {
+                const project = this.projects.find(p => p.id === projectId);
+                if (project) this.openModal(project);
+            } else if (action === 'delete') {
+                this.deleteProject(projectId);
             }
         });
     }
@@ -134,6 +167,12 @@ class ProjectManager {
 
     render() {
         const projectsGrid = document.getElementById('projects-grid');
+
+        if (!projectsGrid) {
+            console.error('projects-grid 요소를 찾을 수 없습니다.');
+            return;
+        }
+
         const filteredProjects = this.getFilteredProjects();
 
         if (filteredProjects.length === 0) {
@@ -154,16 +193,26 @@ class ProjectManager {
         const formattedStartDate = project.startDate ? new Date(project.startDate).toLocaleDateString('ko-KR') : '';
         const formattedEndDate = project.endDate ? new Date(project.endDate).toLocaleDateString('ko-KR') : '';
 
+        // XSS 방지: 사용자 입력 이스케이프
+        const escapeHtml = (text) => {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return String(text || '').replace(/[&<>"']/g, (m) => map[m]);
+        };
+
+        const safeName = escapeHtml(project.name);
+        const safeDescription = escapeHtml(project.description);
+        const safeTeam = project.team.map(member => escapeHtml(member));
+
         return `
             <div class="project-card ${isOverdue ? 'overdue' : ''}">
                 <div class="priority-indicator priority-${project.priority}"></div>
                 <div class="project-header">
                     <div>
-                        <h3 class="project-title">${project.name}</h3>
+                        <h3 class="project-title">${safeName}</h3>
                         <span class="project-status status-${project.status}">${this.getStatusText(project.status)}</span>
                     </div>
                 </div>
-                <p class="project-description">${project.description}</p>
+                <p class="project-description">${safeDescription}</p>
                 <div class="project-meta">
                     <span>시작: ${formattedStartDate || '미정'}</span>
                     <span>마감: ${formattedEndDate || '미정'}</span>
@@ -175,13 +224,13 @@ class ProjectManager {
                     <small>${project.progress}% 완료</small>
                 </div>
                 <div class="project-team">
-                    <strong>팀원:</strong> ${project.team.length > 0 ? project.team.join(', ') : '미지정'}
+                    <strong>팀원:</strong> ${safeTeam.length > 0 ? safeTeam.join(', ') : '미지정'}
                 </div>
                 <div class="project-actions">
-                    <button class="btn btn-secondary btn-small" onclick="projectManager.openModal(${JSON.stringify(project).replace(/"/g, '&quot;')})">
+                    <button class="btn btn-secondary btn-small" data-action="edit" data-project-id="${project.id}">
                         편집
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="projectManager.deleteProject(${project.id})">
+                    <button class="btn btn-danger btn-small" data-action="delete" data-project-id="${project.id}">
                         삭제
                     </button>
                 </div>

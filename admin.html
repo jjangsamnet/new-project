@@ -658,21 +658,41 @@
 
     </div>
 
+    <!-- 전역 오류 핸들러 (가장 먼저 로드) -->
+    <script src="error-handler.js?v=2024120310"></script>
+
+    <!-- 유틸리티 -->
+    <script src="validation-utils.js?v=2024120310"></script>
+    <script src="loading-indicator.js?v=2024120310"></script>
+    <script src="url-sanitizer.js?v=2024120310"></script>
+    <script src="file-validator.js?v=2024120310"></script>
+    <script src="rate-limiter.js?v=2024120310"></script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 
     <!-- Firebase 설정 -->
-    <script src="firebase-config.js?v=2024120302"></script>
+    <script src="firebase-config.js?v=2024120310"></script>
     <!-- 로컬 Firebase 설정 (GitHub Pages에서는 사용 안 함) -->
     <!-- <script src="firebase-config.local.js" onerror="console.log('로컬 Firebase 설정 파일이 없습니다.')"></script> -->
 
-    <!-- Firebase 서비스 레이어 -->
-    <script src="firebase-service.js?v=2024120303"></script>
+    <!-- 관리자 인증 설정 (개발 환경 전용 - Git에 커밋하지 마세요) -->
+    <script src="admin-config.local.js" onerror="console.log('⚠️ admin-config.local.js 파일이 없습니다. Firebase 모드로 실행됩니다.')"></script>
 
-    <script src="admin-script.js?v=2024120303"></script>
+    <!-- 암호화 유틸리티 -->
+    <script src="crypto-utils.js?v=2024120310"></script>
+
+    <!-- Firebase 서비스 레이어 -->
+    <script src="firebase-service.js?v=2024120310"></script>
+
+    <!-- Firebase App Check (CSRF 보호) -->
+    <script src="firebase-app-check.js?v=2024120310"></script>
+
+    <script src="admin-script.js?v=2024120310"></script>
 </body>
 </html>

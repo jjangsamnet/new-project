@@ -14,13 +14,27 @@ class AdminSystem {
         this.listenersSetup = false; // 리스너 중복 설정 방지
         this.selectedMonth = ''; // 선택된 월
 
-        // 관리자 계정 정보
-        this.adminCredentials = {
-            username: 'jjangsam',
-            password: '16181618wkd'
-        };
+        // Firebase 리스너 unsubscribe 함수 저장
+        this.unsubscribers = [];
+
+        // 관리자 계정 정보 (환경 변수 또는 별도 설정 파일에서 로드 권장)
+        // ⚠️ 보안 경고: 실제 운영 환경에서는 환경 변수나 안전한 저장소를 사용하세요
+        this.adminCredentials = this.loadAdminCredentials();
 
         this.initializeWithFirebase();
+    }
+
+    // XSS 방지: HTML 이스케이프 함수
+    escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, (m) => map[m]);
     }
 
     async initializeWithFirebase() {
@@ -83,26 +97,132 @@ class AdminSystem {
                     await firebaseService.saveSettings(this.getDefaultSettings());
                 }
             } else {
-                // 로컬 스토리지 폴백
-                this.courses = JSON.parse(localStorage.getItem('lms_courses')) || [];
-                this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
-                this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
-                this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
+                // 로컬 스토리지 폴백 (안전한 JSON 파싱)
+                this.courses = this.safeParseJSON(localStorage.getItem('lms_courses'), []);
+                this.users = this.safeParseJSON(localStorage.getItem('lms_users'), []);
+                this.enrollments = this.safeParseJSON(localStorage.getItem('lms_enrollments'), []);
+                this.settings = this.safeParseJSON(localStorage.getItem('lms_settings'), this.getDefaultSettings());
             }
         } catch (error) {
             console.error('데이터 로드 오류:', error);
-            // 오류 시 로컬 스토리지 사용
-            this.courses = JSON.parse(localStorage.getItem('lms_courses')) || [];
-            this.users = JSON.parse(localStorage.getItem('lms_users')) || [];
-            this.enrollments = JSON.parse(localStorage.getItem('lms_enrollments')) || [];
-            this.settings = JSON.parse(localStorage.getItem('lms_settings')) || this.getDefaultSettings();
+            // 오류 시 로컬 스토리지 사용 (안전한 파싱)
+            this.courses = this.safeParseJSON(localStorage.getItem('lms_courses'), []);
+            this.users = this.safeParseJSON(localStorage.getItem('lms_users'), []);
+            this.enrollments = this.safeParseJSON(localStorage.getItem('lms_enrollments'), []);
+            this.settings = this.safeParseJSON(localStorage.getItem('lms_settings'), this.getDefaultSettings());
         }
     }
 
-    checkAuthStatus() {
-        // 세션에서 로그인 상태 확인
-        const authStatus = sessionStorage.getItem('admin_authenticated');
-        this.isAuthenticated = authStatus === 'true';
+    // 안전한 JSON 파싱 헬퍼 함수
+    safeParseJSON(jsonString, fallback) {
+        try {
+            return jsonString ? JSON.parse(jsonString) : fallback;
+        } catch (error) {
+            console.error('JSON 파싱 오류:', error);
+            return fallback;
+        }
+    }
+
+    loadAdminCredentials() {
+        // ⚠️ 보안 경고: 클라이언트 측 인증은 개발/테스트 환경에만 사용
+        // 운영 환경에서는 Firebase Authentication + Firestore Security Rules 필수
+
+        // 환경 설정 파일에서 로드 (admin-config.local.js)
+        if (typeof window.ADMIN_CONFIG !== 'undefined') {
+            console.log('✅ 관리자 설정 파일 로드됨 (localStorage 모드)');
+            console.warn('⚠️ 보안 경고: localStorage 모드는 개발 환경 전용입니다.');
+            return window.ADMIN_CONFIG;
+        }
+
+        // Firebase 모드에서는 자격증명 필요 없음
+        if (this.isFirebaseReady) {
+            console.log('✅ Firebase Authentication 모드 (안전)');
+            return null; // Firebase 모드에서는 불필요
+        }
+
+        // 설정 파일 없음
+        console.error('❌ 관리자 인증 설정이 없습니다.');
+        console.log('📋 설정 방법:');
+        console.log('1. admin-config.example.js를 복사하여 admin-config.local.js 생성');
+        console.log('2. 파일 내 관리자 계정 정보 설정');
+        console.log('3. 페이지 새로고침');
+        console.log('');
+        console.log('⚠️ 주의: 클라이언트 측 인증은 보안상 취약합니다.');
+        console.log('운영 환경에서는 Firebase Authentication을 사용하세요.');
+
+        alert('관리자 인증 설정 파일이 없습니다.\n\n[개발 환경 설정 방법]\n1. admin-config.example.js를 복사\n2. admin-config.local.js로 저장\n3. 파일 내 관리자 계정 정보 설정\n4. 페이지 새로고침\n\n[운영 환경 권장]\nFirebase Authentication을 사용하세요.\n자세한 내용은 콘솔(F12)을 확인하세요.');
+
+        // 인증 정보가 없으면 null 반환 (로그인 차단)
+        return null;
+    }
+
+    async checkAuthStatus() {
+        // Firebase Authentication 상태 확인 (우회 불가능)
+        if (this.isFirebaseReady) {
+            const currentUser = await firebaseService.getCurrentUser();
+
+            if (currentUser) {
+                // Firestore에서 관리자 역할 재확인
+                const isAdmin = await this.checkAdminRole(currentUser.id);
+
+                if (!isAdmin) {
+                    // 관리자가 아닌 경우 인증 실패 처리
+                    this.isAuthenticated = false;
+                    sessionStorage.removeItem('admin_authenticated');
+                    sessionStorage.removeItem('admin_user_id');
+                    sessionStorage.removeItem('admin_auth_timestamp');
+                    sessionStorage.removeItem('admin_id_token');
+                    return;
+                }
+
+                if (isAdmin) {
+                    this.isAuthenticated = true;
+                    this.currentUser = currentUser;
+                    sessionStorage.setItem('admin_user_id', currentUser.id);
+                    return;
+                }
+            }
+        } else {
+            // Firebase 없을 때: localStorage 폴백 (개발 전용)
+            // ⚠️ 보안 경고: localStorage 모드는 개발 환경에만 사용
+            const authStatus = sessionStorage.getItem('admin_authenticated');
+            const userId = sessionStorage.getItem('admin_user_id');
+            const authToken = sessionStorage.getItem('admin_auth_token');
+            const authTimestamp = sessionStorage.getItem('admin_auth_timestamp');
+
+            // 모든 인증 정보가 있어야 함
+            if (authStatus === 'true' && userId && authToken && authTimestamp) {
+                const now = Date.now();
+
+                // 타임스탬프 검증 (1시간 유효)
+                if ((now - parseInt(authTimestamp)) >= 3600000) {
+                    console.warn('⚠️ 세션 만료 (1시간 경과)');
+                    this.isAuthenticated = false;
+                    sessionStorage.clear();
+                    return;
+                }
+
+                // 토큰 검증 (저장된 해시와 비교)
+                const expectedToken = await this.generateAuthToken(userId, authTimestamp);
+                if (authToken !== expectedToken) {
+                    console.error('❌ 인증 토큰 불일치 - 조작 감지');
+                    this.isAuthenticated = false;
+                    sessionStorage.clear();
+                    alert('인증 정보가 올바르지 않습니다. 다시 로그인해주세요.');
+                    return;
+                }
+
+                this.isAuthenticated = true;
+                return;
+            }
+        }
+
+        // 인증 실패
+        this.isAuthenticated = false;
+        sessionStorage.removeItem('admin_authenticated');
+        sessionStorage.removeItem('admin_user_id');
+        sessionStorage.removeItem('admin_auth_timestamp');
+        sessionStorage.removeItem('admin_auth_token');
     }
 
     showLoginForm() {
@@ -140,21 +260,169 @@ class AdminSystem {
         }
     }
 
-    handleLogin() {
+    async handleLogin() {
         const username = document.getElementById('admin-username').value;
         const password = document.getElementById('admin-password').value;
         const errorDiv = document.getElementById('login-error');
 
-        if (username === this.adminCredentials.username && password === this.adminCredentials.password) {
-            // 로그인 성공
-            this.isAuthenticated = true;
-            sessionStorage.setItem('admin_authenticated', 'true');
-            this.showAdminDashboard();
-            errorDiv.style.display = 'none';
-        } else {
-            // 로그인 실패
+        try {
+            // Rate limiting 체크
+            if (typeof rateLimiter !== 'undefined') {
+                const limitCheck = rateLimiter.checkLimit('login', username);
+                if (!limitCheck.allowed) {
+                    errorDiv.textContent = limitCheck.message;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+            }
+
+            // Firebase Authentication을 사용한 서버 측 인증
+            if (this.isFirebaseReady) {
+                // Firebase Authentication으로 로그인
+                const result = await firebaseService.signIn(username, password);
+
+                if (!result.success) {
+                    errorDiv.textContent = result.error || '로그인에 실패했습니다.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // Firestore에서 관리자 역할 확인
+                const isAdmin = await this.checkAdminRole(result.user.id);
+
+                if (!isAdmin) {
+                    // 관리자가 아닌 경우 로그아웃
+                    await firebaseService.signOut();
+                    errorDiv.textContent = '관리자 권한이 없습니다.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // 로그인 성공
+                this.isAuthenticated = true;
+                this.currentUser = result.user;
+                sessionStorage.setItem('admin_user_id', result.user.id);
+                sessionStorage.setItem('admin_auth_timestamp', Date.now().toString());
+
+                // Firebase ID Token 저장 (추가 검증용)
+                const idToken = await firebase.auth().currentUser.getIdToken();
+                sessionStorage.setItem('admin_id_token', idToken);
+
+                // Rate limiter 성공 기록
+                if (typeof rateLimiter !== 'undefined') {
+                    rateLimiter.recordAttempt('login', username, true);
+                }
+
+                this.showAdminDashboard();
+                errorDiv.style.display = 'none';
+
+            } else {
+                // Firebase 없을 때: localStorage 폴백 (개발 환경만)
+                console.warn('⚠️ Firebase 미사용 - localStorage 인증 사용 (개발 전용)');
+
+                if (!this.adminCredentials) {
+                    errorDiv.textContent = '관리자 인증 설정이 올바르지 않습니다.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // 비밀번호 해싱 검증
+                let isPasswordValid = false;
+                if (typeof cryptoUtils !== 'undefined' && this.adminCredentials.password.includes('$')) {
+                    isPasswordValid = await cryptoUtils.verifyPassword(password, this.adminCredentials.password);
+                } else {
+                    isPasswordValid = (password === this.adminCredentials.password);
+                }
+
+                if (username === this.adminCredentials.username && isPasswordValid) {
+                    this.isAuthenticated = true;
+                    const timestamp = Date.now().toString();
+                    const userId = 'local_admin';
+
+                    // 인증 토큰 생성 (조작 방지)
+                    const authToken = await this.generateAuthToken(userId, timestamp);
+
+                    sessionStorage.setItem('admin_authenticated', 'true');
+                    sessionStorage.setItem('admin_user_id', userId);
+                    sessionStorage.setItem('admin_auth_timestamp', timestamp);
+                    sessionStorage.setItem('admin_auth_token', authToken);
+
+                    // Rate limiter 성공 기록
+                    if (typeof rateLimiter !== 'undefined') {
+                        rateLimiter.recordAttempt('login', username, true);
+                    }
+
+                    this.showAdminDashboard();
+                    errorDiv.style.display = 'none';
+                } else {
+                    // Rate limiter 실패 기록
+                    if (typeof rateLimiter !== 'undefined') {
+                        rateLimiter.recordAttempt('login', username, false);
+                    }
+
+                    errorDiv.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+                    errorDiv.style.display = 'block';
+                }
+            }
+
+        } catch (error) {
+            console.error('로그인 오류:', error);
+
+            // Rate limiter 실패 기록
+            if (typeof rateLimiter !== 'undefined') {
+                rateLimiter.recordAttempt('login', username, false);
+            }
+
+            errorDiv.textContent = '로그인 중 오류가 발생했습니다: ' + error.message;
             errorDiv.style.display = 'block';
+        } finally {
             document.getElementById('admin-password').value = '';
+        }
+    }
+
+    async generateAuthToken(userId, timestamp) {
+        // 인증 토큰 생성 (조작 방지용)
+        // userId + timestamp + secret을 해시
+        const secret = 'ADMIN_SECRET_KEY_CHANGE_IN_PRODUCTION'; // 운영 환경에서 변경 필수
+        const data = `${userId}:${timestamp}:${secret}`;
+
+        if (typeof cryptoUtils !== 'undefined' && cryptoUtils.hashPassword) {
+            // 해시 함수 사용 (salt 없이)
+            const hash = await cryptoUtils.hashPassword(data);
+            return hash.split('$')[1]; // salt 제거하고 hash만 반환
+        }
+
+        // cryptoUtils 없으면 간단한 해시
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            const char = data.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(36);
+    }
+
+    async checkAdminRole(userId) {
+        try {
+            // Firestore의 admins 컬렉션 또는 users 컬렉션의 role 필드 확인
+            const db = firebase.firestore();
+
+            // 방법 1: admins 컬렉션에 문서 존재 확인
+            const adminDoc = await db.collection('admins').doc(userId).get();
+            if (adminDoc.exists) {
+                return true;
+            }
+
+            // 방법 2: users 컬렉션의 role 필드 확인
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists && userDoc.data().role === 'admin') {
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('관리자 역할 확인 오류:', error);
+            return false;
         }
     }
 
@@ -201,20 +469,36 @@ class AdminSystem {
         }
     }
 
-    handleVideoUpload(file) {
+    async handleVideoUpload(file) {
         if (!file) return;
 
-        // 파일 크기 체크 (500MB)
-        const maxSize = 500 * 1024 * 1024;
-        if (file.size > maxSize) {
-            alert('파일 크기가 너무 큽니다. 500MB 이하의 파일을 선택해주세요.');
-            return;
-        }
+        // 파일 검증 유틸리티 사용
+        if (typeof fileValidator !== 'undefined') {
+            const isFirebase = this.isFirebaseReady;
+            const validation = isFirebase
+                ? await fileValidator.validateVideo(file)
+                : await fileValidator.validateVideoLocal(file);
 
-        // 비디오 파일인지 체크
-        if (!file.type.startsWith('video/')) {
-            alert('비디오 파일만 업로드할 수 있습니다.');
-            return;
+            if (!validation.isValid) {
+                alert(fileValidator.formatErrors(validation.errors));
+                return;
+            }
+        } else {
+            // 폴백: 기본 검증
+            const isFirebase = this.isFirebaseReady;
+            const maxSize = isFirebase ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+            const maxSizeMB = Math.round(maxSize / 1024 / 1024);
+
+            if (file.size > maxSize) {
+                alert(`파일 크기가 너무 큽니다. ${maxSizeMB}MB 이하의 파일을 선택해주세요.\n현재 모드: ${isFirebase ? 'Firebase (최대 50MB)' : 'localStorage (최대 5MB)'}`);
+                return;
+            }
+
+            const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('지원하지 않는 파일 형식입니다.\n허용된 형식: MP4, WebM, OGG, MOV');
+                return;
+            }
         }
 
         // 파일을 Base64로 변환하여 저장 (실제 환경에서는 서버에 업로드)
@@ -290,10 +574,20 @@ class AdminSystem {
     handleLessonVideoUpload(file) {
         if (!file) return;
 
-        // 파일 크기 체크 (500MB)
-        const maxSize = 500 * 1024 * 1024;
+        // 파일 크기 및 타입 검증
+        const isFirebase = this.isFirebaseReady;
+        const maxSize = isFirebase ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // Firebase: 50MB, localStorage: 5MB
+        const maxSizeMB = Math.round(maxSize / 1024 / 1024);
+
         if (file.size > maxSize) {
-            alert('파일 크기가 너무 큽니다. 500MB 이하의 파일을 선택해주세요.');
+            alert(`파일 크기가 너무 큽니다. ${maxSizeMB}MB 이하의 파일을 선택해주세요.\n현재 모드: ${isFirebase ? 'Firebase (최대 50MB)' : 'localStorage (최대 5MB)'}`);
+            return;
+        }
+
+        // 비디오 파일 타입 검증
+        const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('지원하지 않는 파일 형식입니다.\n허용된 형식: MP4, WebM, OGG, MOV');
             return;
         }
 
@@ -483,13 +777,15 @@ class AdminSystem {
             });
 
         const container = document.getElementById('recent-enrollments');
+        if (!container) return;
+
         if (recentEnrollments.length === 0) {
             container.innerHTML = '<p style="color: #666; text-align: center;">최근 수강신청이 없습니다.</p>';
         } else {
             container.innerHTML = recentEnrollments.map(item => `
                 <div style="padding: 10px 0; border-bottom: 1px solid #e9ecef;">
-                    <strong>${item.userName}</strong>님이 <strong>${item.courseName}</strong> 수강신청
-                    <br><small style="color: #666;">${item.date}</small>
+                    <strong>${this.escapeHtml(item.userName)}</strong>님이 <strong>${this.escapeHtml(item.courseName)}</strong> 수강신청
+                    <br><small style="color: #666;">${this.escapeHtml(item.date)}</small>
                 </div>
             `).join('');
         }
@@ -501,9 +797,11 @@ class AdminSystem {
             .slice(0, 5);
 
         const container = document.getElementById('popular-courses');
+        if (!container) return;
+
         container.innerHTML = popularCourses.map(course => `
             <div style="padding: 10px 0; border-bottom: 1px solid #e9ecef;">
-                <strong>${course.title}</strong>
+                <strong>${this.escapeHtml(course.title)}</strong>
                 <br><small style="color: #666;">수강생: ${course.students || 0}명</small>
             </div>
         `).join('');
@@ -511,15 +809,17 @@ class AdminSystem {
 
     loadCourses() {
         const tbody = document.getElementById('courses-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = this.courses.map(course => `
             <tr>
                 <td>
                     <div class="course-title-cell">
-                        ${course.title}
+                        ${this.escapeHtml(course.title)}
                         ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
                     </div>
                 </td>
-                <td>${course.instructor}</td>
+                <td>${this.escapeHtml(course.instructor)}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
                 <td>
@@ -534,16 +834,18 @@ class AdminSystem {
 
     loadUsers() {
         const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = this.users.map(user => {
             const userEnrollments = this.enrollments.filter(e => e.userId === user.id);
             return `
                 <tr>
-                    <td>${user.name}</td>
-                    <td>${user.email}</td>
-                    <td>${user.phone || '-'}</td>
-                    <td>${user.region || '-'}</td>
-                    <td>${user.affiliation || user.organization || '-'}</td>
-                    <td>${this.formatDate(user.registeredAt)}</td>
+                    <td>${this.escapeHtml(user.name)}</td>
+                    <td>${this.escapeHtml(user.email)}</td>
+                    <td>${this.escapeHtml(user.phone || '-')}</td>
+                    <td>${this.escapeHtml(user.region || '-')}</td>
+                    <td>${this.escapeHtml(user.affiliation || user.organization || '-')}</td>
+                    <td>${this.escapeHtml(this.formatDate(user.registeredAt))}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
@@ -559,6 +861,8 @@ class AdminSystem {
 
     loadEnrollments() {
         const tbody = document.getElementById('enrollments-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = this.enrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
@@ -569,10 +873,10 @@ class AdminSystem {
 
             return `
                 <tr>
-                    <td>${course?.title || '알 수 없음'}</td>
-                    <td>${user?.affiliation || user?.organization || '-'}</td>
-                    <td>${user?.name || '알 수 없음'}</td>
-                    <td>${this.formatDate(enrollment.enrolledAt)}</td>
+                    <td>${this.escapeHtml(course?.title || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(user?.affiliation || user?.organization || '-')}</td>
+                    <td>${this.escapeHtml(user?.name || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(this.formatDate(enrollment.enrolledAt))}</td>
                     <td>${progress}%</td>
                     <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
                     <td>
@@ -672,14 +976,14 @@ class AdminSystem {
 
             return `
                 <tr>
-                    <td>${course?.title || '알 수 없음'}</td>
-                    <td>${user?.affiliation || user?.organization || '-'}</td>
-                    <td>${user?.name || '알 수 없음'}</td>
-                    <td>${user?.email || '-'}</td>
-                    <td>${user?.phone || '-'}</td>
-                    <td>${user?.region || '-'}</td>
+                    <td>${this.escapeHtml(course?.title || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(user?.affiliation || user?.organization || '-')}</td>
+                    <td>${this.escapeHtml(user?.name || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(user?.email || '-')}</td>
+                    <td>${this.escapeHtml(user?.phone || '-')}</td>
+                    <td>${this.escapeHtml(user?.region || '-')}</td>
                     <td><span class="status-badge status-completed">${completion.progress}%</span></td>
-                    <td>${completionDate}</td>
+                    <td>${this.escapeHtml(completionDate)}</td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="alert('수강증은 사용자가 LMS에서 직접 발급합니다.')">
                             수강증 안내
@@ -713,19 +1017,31 @@ class AdminSystem {
         // CSV 헤더
         const headers = ['강좌명', '소속', '이름', '이메일', '전화번호', '지역', '진도율', '이수일'];
 
-        // CSV 데이터 행
+        // CSV 데이터 행 (Formula Injection 방지)
+        const sanitizeCSV = (value) => {
+            if (!value) return '""';
+            const str = String(value);
+
+            // Formula injection 방지: =, +, -, @ 로 시작하는 값 앞에 ' 추가
+            if (/^[=+\-@]/.test(str)) {
+                return `"'${str.replace(/"/g, '""')}"`;
+            }
+
+            return `"${str.replace(/"/g, '""')}"`;
+        };
+
         const rows = data.map(completion => {
             const user = this.users.find(u => u.id === completion.userId);
             const course = this.courses.find(c => c.id === completion.courseId);
             return [
-                `"${(course?.title || '알 수 없음').replace(/"/g, '""')}"`,
-                `"${(user?.affiliation || user?.organization || '-').replace(/"/g, '""')}"`,
-                `"${(user?.name || '알 수 없음').replace(/"/g, '""')}"`,
-                `"${(user?.email || '-').replace(/"/g, '""')}"`,
-                `"${(user?.phone || '-').replace(/"/g, '""')}"`,
-                `"${(user?.region || '-').replace(/"/g, '""')}"`,
-                completion.progress + '%',
-                this.formatDate(completion.lastAccessedAt || completion.enrolledAt)
+                sanitizeCSV(course?.title || '알 수 없음'),
+                sanitizeCSV(user?.affiliation || user?.organization || '-'),
+                sanitizeCSV(user?.name || '알 수 없음'),
+                sanitizeCSV(user?.email || '-'),
+                sanitizeCSV(user?.phone || '-'),
+                sanitizeCSV(user?.region || '-'),
+                sanitizeCSV(completion.progress + '%'),
+                sanitizeCSV(this.formatDate(completion.lastAccessedAt || completion.enrolledAt))
             ];
         });
 
@@ -800,15 +1116,17 @@ class AdminSystem {
         });
 
         const tbody = document.getElementById('courses-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = filteredCourses.map(course => `
             <tr>
                 <td>
                     <div class="course-title-cell">
-                        ${course.title}
+                        ${this.escapeHtml(course.title)}
                         ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
                     </div>
                 </td>
-                <td>${course.instructor}</td>
+                <td>${this.escapeHtml(course.instructor)}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
                 <td>
@@ -830,16 +1148,18 @@ class AdminSystem {
         });
 
         const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = filteredUsers.map(user => {
             const userEnrollments = this.enrollments.filter(e => e.userId === user.id);
             return `
                 <tr>
-                    <td>${user.name}</td>
-                    <td>${user.email}</td>
-                    <td>${user.phone || '-'}</td>
-                    <td>${user.region || '-'}</td>
-                    <td>${user.organization || '-'}</td>
-                    <td>${this.formatDate(user.registeredAt)}</td>
+                    <td>${this.escapeHtml(user.name)}</td>
+                    <td>${this.escapeHtml(user.email)}</td>
+                    <td>${this.escapeHtml(user.phone || '-')}</td>
+                    <td>${this.escapeHtml(user.region || '-')}</td>
+                    <td>${this.escapeHtml(user.affiliation || user.organization || '-')}</td>
+                    <td>${this.escapeHtml(this.formatDate(user.registeredAt))}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
@@ -864,6 +1184,8 @@ class AdminSystem {
         });
 
         const tbody = document.getElementById('enrollments-table-body');
+        if (!tbody) return;
+
         tbody.innerHTML = filteredEnrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
@@ -874,10 +1196,10 @@ class AdminSystem {
 
             return `
                 <tr>
-                    <td>${course?.title || '알 수 없음'}</td>
-                    <td>${user?.affiliation || user?.organization || '-'}</td>
-                    <td>${user?.name || '알 수 없음'}</td>
-                    <td>${this.formatDate(enrollment.enrolledAt)}</td>
+                    <td>${this.escapeHtml(course?.title || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(user?.affiliation || user?.organization || '-')}</td>
+                    <td>${this.escapeHtml(user?.name || '알 수 없음')}</td>
+                    <td>${this.escapeHtml(this.formatDate(enrollment.enrolledAt))}</td>
                     <td>${progress}%</td>
                     <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
                     <td>
@@ -1212,6 +1534,8 @@ class AdminSystem {
 
     loadLessons() {
         const container = document.getElementById('lessons-list');
+        if (!container) return;
+
         if (!this.currentEditingCourse || !this.currentEditingCourse.lessons || this.currentEditingCourse.lessons.length === 0) {
             container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">등록된 차시가 없습니다.</p>';
             return;
@@ -1224,12 +1548,12 @@ class AdminSystem {
             <div class="lesson-item">
                 <div class="lesson-info">
                     <div class="lesson-header">
-                        <h4>${lesson.order}차시. ${lesson.title}</h4>
+                        <h4>${lesson.order}차시. ${this.escapeHtml(lesson.title)}</h4>
                         ${lesson.video ? '<span class="video-indicator">🎥</span>' : ''}
                     </div>
-                    <p class="lesson-description">${lesson.description || ''}</p>
+                    <p class="lesson-description">${this.escapeHtml(lesson.description || '')}</p>
                     <div class="lesson-meta">
-                        <span>재생시간: ${lesson.duration || '미정'}</span>
+                        <span>재생시간: ${this.escapeHtml(lesson.duration || '미정')}</span>
                     </div>
                 </div>
                 <div class="lesson-actions">
@@ -1262,28 +1586,65 @@ class AdminSystem {
 
 
     async deleteCourse(courseId) {
-        if (confirm('이 강좌를 삭제하시겠습니까?')) {
+        // 연쇄 삭제 경고
+        const relatedEnrollments = this.enrollments.filter(e => e.courseId === courseId);
+        const confirmMessage = relatedEnrollments.length > 0
+            ? `이 강좌에는 ${relatedEnrollments.length}개의 수강신청이 있습니다.\n강좌와 모든 수강신청을 삭제하시겠습니까?`
+            : '이 강좌를 삭제하시겠습니까?';
+
+        if (confirm(confirmMessage)) {
             try {
-                // Firebase에서 삭제
+                if (typeof showLoading !== 'undefined') {
+                    showLoading('강좌 삭제 중...');
+                }
+
+                // Firebase에서 연쇄 삭제
                 if (this.isFirebaseReady) {
+                    // 1. 강좌 삭제
                     const result = await firebaseService.deleteCourse(courseId);
                     if (!result.success) {
-                        throw new Error(result.error || 'Firebase 삭제 실패');
+                        throw new Error(result.error || 'Firebase 강좌 삭제 실패');
                     }
-                    console.log('✅ Firebase 강좌 삭제 성공');
+
+                    // 2. 관련 수강신청 삭제
+                    const db = firebase.firestore();
+                    const enrollmentsSnapshot = await db.collection('enrollments')
+                        .where('courseId', '==', courseId)
+                        .get();
+
+                    if (!enrollmentsSnapshot.empty) {
+                        const batch = db.batch();
+                        enrollmentsSnapshot.docs.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        await batch.commit();
+                        console.log(`✅ ${enrollmentsSnapshot.size}개의 수강신청 삭제 완료`);
+                    }
+
+                    console.log('✅ Firebase 강좌 및 수강신청 삭제 성공');
                 }
 
                 // 로컬 배열에서 삭제
                 this.courses = this.courses.filter(c => c.id !== courseId);
+                this.enrollments = this.enrollments.filter(e => e.courseId !== courseId);
 
                 // localStorage 백업
                 this.saveData();
                 this.loadCourses();
+                this.loadEnrollments();
                 this.updateStats();
-                alert('강좌가 삭제되었습니다.');
+
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
+
+                alert(`강좌가 삭제되었습니다.${relatedEnrollments.length > 0 ? `\n${relatedEnrollments.length}개의 수강신청도 함께 삭제되었습니다.` : ''}`);
 
             } catch (error) {
                 console.error('강좌 삭제 오류:', error);
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
                 alert('강좌 삭제 중 오류가 발생했습니다: ' + error.message);
             }
         }
@@ -1670,12 +2031,15 @@ class AdminSystem {
             return;
         }
 
+        // 기존 리스너 정리
+        this.cleanupListeners();
+
         console.log('🔔 Admin Firebase 실시간 리스너 설정 중...');
         this.listenersSetup = true;
 
         try {
             // 강좌 데이터 실시간 리스너
-            db.collection('courses').onSnapshot((snapshot) => {
+            const coursesUnsubscribe = db.collection('courses').onSnapshot((snapshot) => {
                 console.log('🔄 [Admin] 강좌 데이터 실시간 업데이트 감지');
 
                 const updatedCourses = snapshot.docs.map(doc => ({
@@ -1692,9 +2056,10 @@ class AdminSystem {
             }, (error) => {
                 console.error('[Admin] 강좌 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(coursesUnsubscribe);
 
             // 사용자 데이터 실시간 리스너
-            db.collection('users').onSnapshot((snapshot) => {
+            const usersUnsubscribe = db.collection('users').onSnapshot((snapshot) => {
                 console.log('🔄 [Admin] 사용자 데이터 실시간 업데이트 감지');
 
                 const updatedUsers = snapshot.docs.map(doc => ({
@@ -1711,9 +2076,10 @@ class AdminSystem {
             }, (error) => {
                 console.error('[Admin] 사용자 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(usersUnsubscribe);
 
             // 수강신청 데이터 실시간 리스너
-            db.collection('enrollments').onSnapshot((snapshot) => {
+            const enrollmentsUnsubscribe = db.collection('enrollments').onSnapshot((snapshot) => {
                 console.log('🔄 [Admin] 수강신청 데이터 실시간 업데이트 감지');
 
                 const updatedEnrollments = snapshot.docs.map(doc => ({
@@ -1730,9 +2096,10 @@ class AdminSystem {
             }, (error) => {
                 console.error('[Admin] 수강신청 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(enrollmentsUnsubscribe);
 
             // 설정 데이터 실시간 리스너
-            db.collection('settings').doc('main').onSnapshot((doc) => {
+            const settingsUnsubscribe = db.collection('settings').doc('main').onSnapshot((doc) => {
                 console.log('🔄 [Admin] 설정 데이터 실시간 업데이트 감지');
 
                 if (doc.exists) {
@@ -1746,12 +2113,36 @@ class AdminSystem {
             }, (error) => {
                 console.error('[Admin] 설정 실시간 리스너 오류:', error);
             });
+            this.unsubscribers.push(settingsUnsubscribe);
 
-            console.log('✅ [Admin] Firebase 실시간 리스너 설정 완료');
+            console.log('✅ [Admin] Firebase 실시간 리스너 설정 완료 (총', this.unsubscribers.length, '개)');
 
         } catch (error) {
             console.error('[Admin] Firebase 리스너 설정 오류:', error);
         }
+    }
+
+    // Firebase 리스너 정리
+    cleanupListeners() {
+        if (this.unsubscribers.length > 0) {
+            console.log('🧹 [Admin] Firebase 리스너 정리 중...', this.unsubscribers.length, '개');
+            this.unsubscribers.forEach(unsubscribe => {
+                try {
+                    unsubscribe();
+                } catch (error) {
+                    console.error('[Admin] 리스너 정리 오류:', error);
+                }
+            });
+            this.unsubscribers = [];
+            this.listenersSetup = false;
+            console.log('✅ [Admin] Firebase 리스너 정리 완료');
+        }
+    }
+
+    // 페이지 언로드 시 리스너 정리
+    destroy() {
+        console.log('🔻 [Admin] 시스템 종료 중...');
+        this.cleanupListeners();
     }
 }
 
@@ -1829,8 +2220,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 반응형 사이드바 처리
     if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.remove('open');
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.classList.remove('open');
     }
+});
+
+// 페이지 언로드 시 리스너 정리
+window.addEventListener('beforeunload', () => {
+    console.log('📴 [Admin] 페이지 종료 - 리소스 정리 중...');
+    admin.destroy();
+});
+
+// 페이지 숨김 시에도 정리 (모바일 대응)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('👻 [Admin] 페이지 숨김 - 리소스 일시 정리');
+        // 필요시 리스너 일시 정지 로직 추가 가능
+    }
+});
 
     // 관리자 디버그 도구 추가
     window.adminDebug = {

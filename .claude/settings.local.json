@@ -10,7 +10,8 @@
       "WebFetch(domain:jjangsamnet.github.io)",
       "Bash(cmd /c:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
