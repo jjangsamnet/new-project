@@ -6,11 +6,13 @@ class AdminSystem {
         this.courses = [];
         this.users = [];
         this.enrollments = [];
+        this.completions = []; // 이수자 목록
         this.settings = {};
         this.currentEditingCourse = null;
         this.currentEditingLesson = null;
         this.isAuthenticated = false;
         this.listenersSetup = false; // 리스너 중복 설정 방지
+        this.selectedMonth = ''; // 선택된 월
 
         // 관리자 계정 정보
         this.adminCredentials = {
@@ -122,6 +124,7 @@ class AdminSystem {
         this.loadCourses();
         this.loadUsers();
         this.loadEnrollments();
+        this.loadCompletions();
         this.loadSettings();
         this.updateStats();
         this.showSection('dashboard');
@@ -581,6 +584,155 @@ class AdminSystem {
                 </tr>
             `;
         }).join('');
+    }
+
+    // 이수자 명단 로드
+    loadCompletions() {
+        // 진도율 90% 이상인 수강신청만 필터링
+        this.completions = this.enrollments.filter(e => (e.progress || 0) >= 90);
+
+        // 월 필터 드롭다운 생성
+        this.populateMonthFilter();
+
+        // 통계 업데이트
+        this.updateCompletionStats();
+
+        // 테이블 렌더링
+        this.renderCompletionsTable();
+    }
+
+    // 월 필터 드롭다운 채우기
+    populateMonthFilter() {
+        const monthFilter = document.getElementById('completion-month-filter');
+        if (!monthFilter) return;
+
+        const months = new Set();
+
+        this.completions.forEach(completion => {
+            if (completion.lastAccessedAt || completion.enrolledAt) {
+                const date = new Date(completion.lastAccessedAt || completion.enrolledAt);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                months.add(monthKey);
+            }
+        });
+
+        const sortedMonths = Array.from(months).sort().reverse();
+
+        monthFilter.innerHTML = '<option value="">전체 기간</option>' +
+            sortedMonths.map(month => {
+                const [year, monthNum] = month.split('-');
+                return `<option value="${month}">${year}년 ${monthNum}월</option>`;
+            }).join('');
+    }
+
+    // 이수자 통계 업데이트
+    updateCompletionStats() {
+        const totalCompletions = this.completions.length;
+        const totalEnrollments = this.enrollments.length;
+
+        // 이번 달 이수자
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const monthCompletions = this.completions.filter(c => {
+            const date = new Date(c.lastAccessedAt || c.enrolledAt);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            return monthKey === currentMonth;
+        }).length;
+
+        // 이수율
+        const completionRate = totalEnrollments > 0
+            ? Math.round((totalCompletions / totalEnrollments) * 100)
+            : 0;
+
+        document.getElementById('total-completions').textContent = totalCompletions;
+        document.getElementById('month-completions').textContent = monthCompletions;
+        document.getElementById('completion-rate').textContent = `${completionRate}%`;
+    }
+
+    // 이수자 테이블 렌더링
+    renderCompletionsTable() {
+        const tbody = document.getElementById('completions-table-body');
+        if (!tbody) return;
+
+        let filteredCompletions = this.completions;
+
+        // 월 필터 적용
+        if (this.selectedMonth) {
+            filteredCompletions = this.completions.filter(c => {
+                const date = new Date(c.lastAccessedAt || c.enrolledAt);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                return monthKey === this.selectedMonth;
+            });
+        }
+
+        tbody.innerHTML = filteredCompletions.map(completion => {
+            const user = this.users.find(u => u.id === completion.userId);
+            const course = this.courses.find(c => c.id === completion.courseId);
+            const completionDate = this.formatDate(completion.lastAccessedAt || completion.enrolledAt);
+
+            return `
+                <tr>
+                    <td>${course?.title || '알 수 없음'}</td>
+                    <td>${user?.affiliation || user?.organization || '-'}</td>
+                    <td>${user?.name || '알 수 없음'}</td>
+                    <td>${user?.email || '-'}</td>
+                    <td>${user?.phone || '-'}</td>
+                    <td>${user?.region || '-'}</td>
+                    <td><span class="status-badge status-completed">${completion.progress}%</span></td>
+                    <td>${completionDate}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="alert('수강증은 사용자가 LMS에서 직접 발급합니다.')">
+                            수강증 안내
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 월 필터 변경
+    filterCompletionsByMonth() {
+        const monthFilter = document.getElementById('completion-month-filter');
+        this.selectedMonth = monthFilter.value;
+        this.renderCompletionsTable();
+    }
+
+    // 이수자 명단 엑셀 내보내기
+    exportCompletions() {
+        let data = this.completions;
+
+        // 월 필터 적용
+        if (this.selectedMonth) {
+            data = this.completions.filter(c => {
+                const date = new Date(c.lastAccessedAt || c.enrolledAt);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                return monthKey === this.selectedMonth;
+            });
+        }
+
+        const csvContent = [
+            ['강좌명', '소속', '이름', '이메일', '전화번호', '지역', '진도율', '이수일'],
+            ...data.map(completion => {
+                const user = this.users.find(u => u.id === completion.userId);
+                const course = this.courses.find(c => c.id === completion.courseId);
+                return [
+                    course?.title || '알 수 없음',
+                    user?.affiliation || user?.organization || '-',
+                    user?.name || '알 수 없음',
+                    user?.email || '-',
+                    user?.phone || '-',
+                    user?.region || '-',
+                    `${completion.progress}%`,
+                    this.formatDate(completion.lastAccessedAt || completion.enrolledAt)
+                ];
+            })
+        ].map(row => row.join(',')).join('\\n');
+
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `이수자명단_${this.selectedMonth || '전체'}_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
     }
 
     loadSettings() {
@@ -1129,6 +1281,7 @@ class AdminSystem {
             this.saveData();
             this.loadUsers();
             this.loadEnrollments();
+            this.loadCompletions();
             this.updateStats();
             alert('사용자가 삭제되었습니다.');
         }

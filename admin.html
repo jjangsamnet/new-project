@@ -350,7 +350,63 @@
                 </div>
             </div>
 
-            <div class="analytics-grid">
+            <!-- 월별 이수자 명단 -->
+            <div class="section-header" style="margin-top: 30px;">
+                <h3>월별 이수자 명단</h3>
+                <div class="header-actions">
+                    <select id="completion-month-filter" class="filter-select" onchange="admin.filterCompletionsByMonth()">
+                        <option value="">전체 기간</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="admin.exportCompletions()">이수자 명단 내보내기 (Excel)</button>
+                </div>
+            </div>
+
+            <div class="stats-cards" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <div class="stat-icon">🎓</div>
+                    <div class="stat-info">
+                        <h4>총 이수자</h4>
+                        <p class="stat-number" id="total-completions">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-info">
+                        <h4>이번 달 이수자</h4>
+                        <p class="stat-number" id="month-completions">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-info">
+                        <h4>이수율</h4>
+                        <p class="stat-number" id="completion-rate">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>강좌명</th>
+                            <th>소속</th>
+                            <th>이름</th>
+                            <th>이메일</th>
+                            <th>전화번호</th>
+                            <th>지역</th>
+                            <th>진도율</th>
+                            <th>이수일</th>
+                            <th>수강증</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completions-table-body">
+                        <!-- 이수자 목록이 여기에 표시됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="analytics-grid" style="margin-top: 40px;">
                 <div class="analytics-card">
                     <h3>월별 수강신청 현황</h3>
                     <div class="chart-placeholder">
