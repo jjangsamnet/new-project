@@ -254,8 +254,8 @@ body {
 
 .video-player {
     width: 100%;
-    min-height: 400px;
-    max-height: 60vh;
+    aspect-ratio: 16 / 9;
+    max-height: 70vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -769,8 +769,8 @@ body {
     }
 
     .video-player {
-        min-height: 300px;
-        max-height: 50vh;
+        aspect-ratio: 16 / 9;
+        max-height: 40vh;
     }
 
     .lesson-header {
