@@ -606,16 +606,21 @@ class AdminSystem {
         tbody.innerHTML = this.enrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
+            const progress = enrollment.progress || 0;
+            const isCompleted = progress >= 80;
+            const completionStatus = isCompleted ? '이수' : '미이수';
+            const completionBadge = isCompleted ? 'status-completed' : 'status-enrolled';
+
             return `
                 <tr>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
-                    <td>${this.getPaymentMethodName(enrollment.paymentMethod)}</td>
-                    <td><span class="status-badge status-${enrollment.status || 'enrolled'}">${this.getEnrollmentStatusName(enrollment.status || 'enrolled')}</span></td>
+                    <td>${progress}%</td>
+                    <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-success" onclick="admin.completeEnrollment(${enrollment.id})">완료</button>
+                            <button class="btn btn-sm btn-primary" onclick="admin.updateProgress(${enrollment.id})">진도율 수정</button>
                             <button class="btn btn-sm btn-danger" onclick="admin.cancelEnrollment(${enrollment.id})">취소</button>
                         </div>
                     </td>
@@ -741,16 +746,21 @@ class AdminSystem {
         tbody.innerHTML = filteredEnrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
+            const progress = enrollment.progress || 0;
+            const isCompleted = progress >= 80;
+            const completionStatus = isCompleted ? '이수' : '미이수';
+            const completionBadge = isCompleted ? 'status-completed' : 'status-enrolled';
+
             return `
                 <tr>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
-                    <td>${this.getPaymentMethodName(enrollment.paymentMethod)}</td>
-                    <td><span class="status-badge status-${enrollment.status || 'enrolled'}">${this.getEnrollmentStatusName(enrollment.status || 'enrolled')}</span></td>
+                    <td>${progress}%</td>
+                    <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-success" onclick="admin.completeEnrollment(${enrollment.id})">완료</button>
+                            <button class="btn btn-sm btn-primary" onclick="admin.updateProgress(${enrollment.id})">진도율 수정</button>
                             <button class="btn btn-sm btn-danger" onclick="admin.cancelEnrollment(${enrollment.id})">취소</button>
                         </div>
                     </td>
@@ -1152,13 +1162,24 @@ class AdminSystem {
         alert('사용자 상태가 변경되었습니다.');
     }
 
-    completeEnrollment(enrollmentId) {
+    updateProgress(enrollmentId) {
         const enrollment = this.enrollments.find(e => e.id === enrollmentId);
         if (enrollment) {
-            enrollment.status = 'completed';
-            this.saveData();
-            this.loadEnrollments();
-            alert('수강신청이 완료 처리되었습니다.');
+            const currentProgress = enrollment.progress || 0;
+            const newProgress = prompt(`진도율을 입력하세요 (0-100%):\n현재 진도율: ${currentProgress}%`, currentProgress);
+
+            if (newProgress !== null) {
+                const progressNum = parseInt(newProgress);
+                if (isNaN(progressNum) || progressNum < 0 || progressNum > 100) {
+                    alert('0에서 100 사이의 숫자를 입력해주세요.');
+                    return;
+                }
+
+                enrollment.progress = progressNum;
+                this.saveData();
+                this.loadEnrollments();
+                alert('진도율이 업데이트되었습니다.');
+            }
         }
     }
 
@@ -1427,16 +1448,20 @@ class AdminSystem {
     }
 
     generateEnrollmentCSV() {
-        const headers = ['학생명', '강좌명', '신청일', '결제방법', '상태'];
+        const headers = ['학생명', '강좌명', '신청일', '진도율(%)', '이수여부'];
         const rows = this.enrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
+            const progress = enrollment.progress || 0;
+            const isCompleted = progress >= 80;
+            const completionStatus = isCompleted ? '이수' : '미이수';
+
             return [
                 user?.name || '알 수 없음',
                 course?.title || '알 수 없음',
                 this.formatDate(enrollment.enrolledAt),
-                this.getPaymentMethodName(enrollment.paymentMethod),
-                this.getEnrollmentStatusName(enrollment.status || 'enrolled')
+                progress,
+                completionStatus
             ];
         });
 
