@@ -521,8 +521,8 @@ element.classList.toggle('toggle-class');</code></pre>
                     iframe.id = 'youtube-player';
                     iframe.width = '100%';
                     iframe.height = '100%';
-                    // 유튜브 파라미터: 제목 숨김, 관련 영상 숨김, 컨트롤 최소화
-                    iframe.src = `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0`;
+                    // 유튜브 파라미터: 제목 숨김, 관련 영상 완전 차단, 컨트롤 최소화
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1`;
                     iframe.frameBorder = '0';
                     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                     iframe.allowFullscreen = true;
