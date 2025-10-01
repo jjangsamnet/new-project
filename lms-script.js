@@ -480,11 +480,30 @@ class LMSSystem {
         emptyCoursesContainer.style.display = 'none';
 
         // 수강중인 강좌들 렌더링
+        console.log('📚 강좌 찾기 시작...');
+        console.log('전체 강좌 수:', this.courses.length);
+        console.log('전체 강좌 ID 목록:', this.courses.map(c => c.id));
+
         const enrolledCourses = userEnrollments.map(enrollment => {
-            return this.courses.find(course => course.id === enrollment.courseId);
+            console.log('수강신청 courseId로 강좌 찾기:', enrollment.courseId);
+            const foundCourse = this.courses.find(course => {
+                console.log('  비교:', course.id, '===', enrollment.courseId, '?', course.id === enrollment.courseId);
+                return course.id === enrollment.courseId;
+            });
+            console.log('찾은 강좌:', foundCourse ? foundCourse.title : 'null');
+            return foundCourse;
         }).filter(course => course); // null 값 제거
 
-        enrolledCoursesContainer.innerHTML = this.renderMyCoursesGrid(enrolledCourses);
+        console.log('최종 enrolledCourses:', enrolledCourses.length, '개');
+        console.log('렌더링할 강좌들:', enrolledCourses.map(c => c.title));
+
+        const renderedHtml = this.renderMyCoursesGrid(enrolledCourses);
+        console.log('생성된 HTML 길이:', renderedHtml.length);
+
+        enrolledCoursesContainer.innerHTML = renderedHtml;
+
+        console.log('✅ innerHTML 할당 완료');
+        console.log('할당 후 실제 innerHTML 길이:', enrolledCoursesContainer.innerHTML.length);
     }
 
     renderMyCoursesGrid(courses) {
