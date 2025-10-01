@@ -766,6 +766,19 @@ class LMSSystem {
     async handleRegister(e) {
         const formInputs = e.target.querySelectorAll('input[type="text"]');
         const phoneInput = e.target.querySelector('input[type="tel"]').value;
+        const termsCheckbox = document.getElementById('terms-checkbox');
+        const privacyCheckbox = document.getElementById('privacy-checkbox');
+
+        // 개인정보보호 동의 체크 검증
+        if (!termsCheckbox.checked) {
+            alert('이용약관 및 개인정보처리방침에 동의해주세요.');
+            return;
+        }
+
+        if (!privacyCheckbox.checked) {
+            alert('개인정보 수집 및 이용에 동의해주세요.');
+            return;
+        }
 
         const userData = {
             name: formInputs[0].value,
