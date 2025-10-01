@@ -1313,9 +1313,12 @@ class LMSSystem {
                         font-weight: bold;
                     }
                     .cert-course {
-                        font-size: 18px;
+                        font-size: 16px;
                         margin: 30px 0;
                         line-height: 1.4;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
                     }
                     .cert-text {
                         font-size: 20px;
