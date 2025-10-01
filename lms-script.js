@@ -1202,6 +1202,21 @@ function logout() {
     lms.logout();
 }
 
+function showTermsModal(event) {
+    if (event) event.preventDefault();
+    document.getElementById('terms-modal').style.display = 'block';
+}
+
+function showPrivacyPolicyModal(event) {
+    if (event) event.preventDefault();
+    document.getElementById('privacy-policy-modal').style.display = 'block';
+}
+
+function showPrivacyConsentModal(event) {
+    if (event) event.preventDefault();
+    document.getElementById('privacy-consent-modal').style.display = 'block';
+}
+
 function continueLearning(courseId) {
     console.log('continueLearning 함수 호출됨, courseId:', courseId);
 

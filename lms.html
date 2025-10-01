@@ -219,14 +219,14 @@
                     <label>
                         <input type="checkbox" id="terms-checkbox" required>
                         <span class="checkmark"></span>
-                        이용약관 및 개인정보처리방침에 동의합니다.
+                        <a href="#" onclick="showTermsModal(event)" style="color: #007bff; text-decoration: underline;">이용약관</a> 및 <a href="#" onclick="showPrivacyPolicyModal(event)" style="color: #007bff; text-decoration: underline;">개인정보처리방침</a>에 동의합니다.
                     </label>
                 </div>
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="privacy-checkbox" required>
                         <span class="checkmark"></span>
-                        개인정보 수집 및 이용에 동의합니다. (필수)
+                        <a href="#" onclick="showPrivacyConsentModal(event)" style="color: #007bff; text-decoration: underline;">개인정보 수집 및 이용</a>에 동의합니다. (필수)
                     </label>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">회원가입</button>
@@ -267,6 +267,113 @@
                 <p>입력하신 이메일 주소로 비밀번호 재설정 링크를 보내드렸습니다.</p>
                 <p>메일을 확인하고 링크를 클릭하여 새 비밀번호를 설정하세요.</p>
                 <button class="btn btn-outline" onclick="closeModal('password-reset-modal')">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이용약관 모달 -->
+    <div id="terms-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>이용약관</h2>
+                <span class="close" onclick="closeModal('terms-modal')">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px; line-height: 1.6;">
+                <h3>제1조 (목적)</h3>
+                <p>본 약관은 온라인 교육 플랫폼(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+
+                <h3>제2조 (정의)</h3>
+                <p>1. "서비스"란 회사가 제공하는 온라인 교육 콘텐츠 및 관련 서비스를 의미합니다.</p>
+                <p>2. "회원"이란 본 약관에 동의하고 서비스에 가입한 자를 의미합니다.</p>
+
+                <h3>제3조 (약관의 효력 및 변경)</h3>
+                <p>1. 본 약관은 서비스 화면에 게시하거나 기타의 방법으로 회원에게 공지함으로써 효력이 발생합니다.</p>
+                <p>2. 회사는 필요한 경우 관련 법령을 위배하지 않는 범위에서 본 약관을 변경할 수 있습니다.</p>
+
+                <h3>제4조 (서비스의 제공)</h3>
+                <p>1. 회사는 회원에게 다양한 온라인 교육 콘텐츠를 제공합니다.</p>
+                <p>2. 서비스는 연중무휴, 1일 24시간 제공함을 원칙으로 합니다.</p>
+
+                <h3>제5조 (회원의 의무)</h3>
+                <p>1. 회원은 본 약관 및 관련 법령을 준수하여야 합니다.</p>
+                <p>2. 회원은 타인의 정보를 도용하거나 부정한 방법으로 서비스를 이용할 수 없습니다.</p>
+
+                <h3>제6조 (면책조항)</h3>
+                <p>회사는 천재지변, 전쟁, 기간통신사업자의 서비스 중지 등 불가항력적인 사유로 인한 서비스 중단에 대해서는 책임을 지지 않습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 개인정보처리방침 모달 -->
+    <div id="privacy-policy-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>개인정보처리방침</h2>
+                <span class="close" onclick="closeModal('privacy-policy-modal')">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px; line-height: 1.6;">
+                <h3>1. 개인정보의 처리 목적</h3>
+                <p>회사는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
+                <p>- 회원 가입 및 관리</p>
+                <p>- 서비스 제공 및 계약의 이행</p>
+                <p>- 민원 사무 처리</p>
+
+                <h3>2. 개인정보의 처리 및 보유 기간</h3>
+                <p>회사는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.</p>
+
+                <h3>3. 개인정보의 제3자 제공</h3>
+                <p>회사는 정보주체의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 내에서만 처리하며, 정보주체의 동의, 법률의 특별한 규정 등 개인정보 보호법 제17조에 해당하는 경우에만 개인정보를 제3자에게 제공합니다.</p>
+
+                <h3>4. 정보주체의 권리·의무 및 행사방법</h3>
+                <p>정보주체는 회사에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다.</p>
+                <p>- 개인정보 열람요구</p>
+                <p>- 오류 등이 있을 경우 정정 요구</p>
+                <p>- 삭제요구</p>
+                <p>- 처리정지 요구</p>
+
+                <h3>5. 개인정보의 안전성 확보조치</h3>
+                <p>회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다.</p>
+                <p>- 개인정보 취급 직원의 최소화 및 교육</p>
+                <p>- 개인정보의 암호화</p>
+                <p>- 해킹 등에 대비한 기술적 대책</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 개인정보 수집 및 이용 동의 모달 -->
+    <div id="privacy-consent-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>개인정보 수집 및 이용 동의</h2>
+                <span class="close" onclick="closeModal('privacy-consent-modal')">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px; line-height: 1.6;">
+                <h3>수집하는 개인정보 항목</h3>
+                <p>회사는 회원가입 및 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다.</p>
+                <ul style="margin-left: 20px;">
+                    <li>필수항목: 이름, 이메일, 비밀번호, 휴대폰 번호, 시/도, 소속</li>
+                    <li>선택항목: 없음</li>
+                </ul>
+
+                <h3>개인정보의 수집 및 이용 목적</h3>
+                <ul style="margin-left: 20px;">
+                    <li>회원 가입 의사 확인, 회원제 서비스 제공, 본인 식별·인증</li>
+                    <li>서비스 제공 및 계약의 이행</li>
+                    <li>수강 관리 및 학습 지원</li>
+                    <li>공지사항 전달, 불만처리 등을 위한 원활한 의사소통 경로의 확보</li>
+                    <li>신규 서비스 개발 및 마케팅·광고에의 활용</li>
+                </ul>
+
+                <h3>개인정보의 보유 및 이용 기간</h3>
+                <p>회원 탈퇴 시까지 보유하며, 관계 법령에 따라 일정 기간 보관이 필요한 경우에는 해당 기간 동안 보관합니다.</p>
+                <ul style="margin-left: 20px;">
+                    <li>계약 또는 청약철회 등에 관한 기록: 5년 (전자상거래 등에서의 소비자 보호에 관한 법률)</li>
+                    <li>대금결제 및 재화 등의 공급에 관한 기록: 5년 (전자상거래 등에서의 소비자 보호에 관한 법률)</li>
+                    <li>소비자의 불만 또는 분쟁처리에 관한 기록: 3년 (전자상거래 등에서의 소비자 보호에 관한 법률)</li>
+                </ul>
+
+                <h3>동의 거부 권리 및 불이익</h3>
+                <p>회원은 개인정보 수집 및 이용에 대한 동의를 거부할 권리가 있습니다. 다만, 필수항목에 대한 동의를 거부할 경우 회원가입 및 서비스 이용이 제한될 수 있습니다.</p>
             </div>
         </div>
     </div>
