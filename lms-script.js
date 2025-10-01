@@ -552,6 +552,7 @@ class LMSSystem {
                                 <div class="course-actions">
                                     <button class="btn btn-primary" onclick="continueLearning(${course.id})">학습 계속하기</button>
                                     <button class="btn btn-outline" onclick="viewCourseDetail(${course.id})">강좌 정보</button>
+                                    ${progress >= 90 ? `<button class="btn btn-success" onclick="lms.generateCertificate(${course.id})">수강증 발급</button>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -1191,6 +1192,186 @@ class LMSSystem {
             smtpPort: '',
             senderEmail: ''
         };
+    }
+
+    // 수강증 발급
+    generateCertificate(courseId) {
+        console.log('📜 수강증 발급 시작, courseId:', courseId);
+
+        // 강좌 정보 찾기
+        const course = this.courses.find(c => c.id == courseId);
+        if (!course) {
+            alert('강좌 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        // 수강신청 정보 찾기
+        const enrollment = this.enrollments.find(e =>
+            e.userId === this.currentUser.id && e.courseId == courseId
+        );
+        if (!enrollment || enrollment.progress < 90) {
+            alert('수강 완료율이 90% 미만입니다.');
+            return;
+        }
+
+        // 수강증 HTML 생성
+        const certificateHTML = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>수강증 - ${course.title}</title>
+                <style>
+                    @media print {
+                        body { margin: 0; }
+                        .no-print { display: none; }
+                    }
+                    body {
+                        font-family: 'Nanum Myeongjo', serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        background: #f0f0f0;
+                        padding: 20px;
+                    }
+                    .certificate {
+                        width: 800px;
+                        padding: 60px;
+                        background: white;
+                        border: 15px solid #2c5aa0;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                        position: relative;
+                    }
+                    .certificate::before {
+                        content: '';
+                        position: absolute;
+                        top: 20px;
+                        left: 20px;
+                        right: 20px;
+                        bottom: 20px;
+                        border: 2px solid #d4af37;
+                    }
+                    .cert-content {
+                        position: relative;
+                        text-align: center;
+                    }
+                    .cert-title {
+                        font-size: 48px;
+                        font-weight: bold;
+                        color: #2c5aa0;
+                        margin-bottom: 40px;
+                        letter-spacing: 10px;
+                    }
+                    .cert-name {
+                        font-size: 36px;
+                        font-weight: bold;
+                        margin: 30px 0;
+                        border-bottom: 2px solid #333;
+                        padding-bottom: 10px;
+                        display: inline-block;
+                        min-width: 300px;
+                    }
+                    .cert-course {
+                        font-size: 24px;
+                        margin: 30px 0;
+                        line-height: 1.6;
+                    }
+                    .cert-text {
+                        font-size: 18px;
+                        line-height: 1.8;
+                        margin: 20px 0;
+                        color: #333;
+                    }
+                    .cert-date {
+                        font-size: 20px;
+                        margin-top: 40px;
+                    }
+                    .cert-org {
+                        font-size: 28px;
+                        font-weight: bold;
+                        margin-top: 50px;
+                        color: #2c5aa0;
+                    }
+                    .cert-seal {
+                        display: inline-block;
+                        width: 100px;
+                        height: 100px;
+                        border: 3px solid #d4af37;
+                        border-radius: 50%;
+                        line-height: 100px;
+                        margin-top: 30px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #d4af37;
+                    }
+                    .btn-container {
+                        text-align: center;
+                        margin-top: 30px;
+                    }
+                    .btn {
+                        padding: 12px 30px;
+                        margin: 0 10px;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    }
+                    .btn-print {
+                        background: #2c5aa0;
+                        color: white;
+                    }
+                    .btn-close {
+                        background: #666;
+                        color: white;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="certificate">
+                    <div class="cert-content">
+                        <div class="cert-title">수 강 증</div>
+
+                        <div class="cert-name">${this.currentUser.name}</div>
+
+                        <div class="cert-course">
+                            <strong>과정명:</strong> ${course.title}
+                        </div>
+
+                        <div class="cert-text">
+                            위 사람은 본 학회가 주관하는<br>
+                            위의 교육과정을 성실히 수강하였으므로<br>
+                            이 증서를 수여합니다.
+                        </div>
+
+                        <div class="cert-date">
+                            ${new Date().getFullYear()}년 ${new Date().getMonth() + 1}월 ${new Date().getDate()}일
+                        </div>
+
+                        <div class="cert-org">
+                            (사)한국창의정보문화학회
+                        </div>
+
+                        <div class="cert-seal">
+                            인
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-container no-print">
+                    <button class="btn btn-print" onclick="window.print()">인쇄하기</button>
+                    <button class="btn btn-close" onclick="window.close()">닫기</button>
+                </div>
+            </body>
+            </html>
+        `;
+
+        // 새 창에서 수강증 열기
+        const certificateWindow = window.open('', '_blank', 'width=900,height=800');
+        certificateWindow.document.write(certificateHTML);
+        certificateWindow.document.close();
     }
 
     // 설정을 UI에 적용

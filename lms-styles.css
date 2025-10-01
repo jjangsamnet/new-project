@@ -53,6 +53,16 @@ body {
     color: white;
 }
 
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
 .btn-large {
     padding: 16px 32px;
     font-size: 16px;
