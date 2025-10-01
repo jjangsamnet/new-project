@@ -1214,6 +1214,23 @@ class LMSSystem {
             return;
         }
 
+        // 소속 정보 확인 및 입력
+        let affiliation = this.currentUser.affiliation || '';
+        if (!affiliation) {
+            affiliation = prompt('소속을 입력해주세요 (예: 대화초등학교):', '');
+            if (!affiliation) {
+                alert('소속 정보가 필요합니다.');
+                return;
+            }
+            // 소속 정보 저장
+            this.currentUser.affiliation = affiliation;
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                firebaseService.updateUser(this.currentUser.id, { affiliation: affiliation });
+            } else {
+                localStorage.setItem('lms_current_user', JSON.stringify(this.currentUser));
+            }
+        }
+
         // 수강증 HTML 생성
         const certificateHTML = `
             <!DOCTYPE html>
@@ -1264,12 +1281,22 @@ class LMSSystem {
                         margin-bottom: 40px;
                         letter-spacing: 8px;
                     }
-                    .cert-name {
-                        font-size: 28px;
-                        font-weight: bold;
-                        margin: 30px 0;
-                        display: block;
+                    .cert-info {
                         text-align: right;
+                        margin: 30px 0;
+                        font-size: 20px;
+                        line-height: 1.8;
+                    }
+                    .cert-info-row {
+                        margin: 10px 0;
+                    }
+                    .cert-info-label {
+                        font-weight: normal;
+                        display: inline-block;
+                        width: 80px;
+                    }
+                    .cert-info-value {
+                        font-weight: bold;
                     }
                     .cert-course {
                         font-size: 18px;
@@ -1320,7 +1347,16 @@ class LMSSystem {
                     <div class="cert-content">
                         <div class="cert-title">수 강 증</div>
 
-                        <div class="cert-name">${this.currentUser.name}</div>
+                        <div class="cert-info">
+                            <div class="cert-info-row">
+                                <span class="cert-info-label">소속:</span>
+                                <span class="cert-info-value">${affiliation}</span>
+                            </div>
+                            <div class="cert-info-row">
+                                <span class="cert-info-label">이름:</span>
+                                <span class="cert-info-value">${this.currentUser.name}</span>
+                            </div>
+                        </div>
 
                         <div class="cert-course">
                             <strong>과정명:</strong> ${course.title}
