@@ -86,6 +86,14 @@ class CourseLearningSystem {
             if (this.currentCourse.lessons && this.currentCourse.lessons.length > 0) {
                 console.log('✅ 강좌에 등록된 차시 사용:', this.currentCourse.lessons.length, '개');
                 this.lessons = this.currentCourse.lessons;
+
+                // 각 차시의 videoUrl 확인
+                console.log('📹 차시별 영상 URL 확인:');
+                this.lessons.forEach((lesson, index) => {
+                    console.log(`  차시 ${index + 1}: ${lesson.title}`);
+                    console.log(`    - videoUrl: ${lesson.videoUrl || '없음'}`);
+                    console.log(`    - videoType: ${lesson.videoType || '없음'}`);
+                });
             } else {
                 console.log('⚠️ 강좌에 차시 없음 - 커리큘럼에서 생성');
                 this.lessons = this.generateLessonsFromCurriculum(this.currentCourse);
