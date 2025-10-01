@@ -539,7 +539,7 @@ class AdminSystem {
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
                     <td>${user.region || '-'}</td>
-                    <td>${user.organization || '-'}</td>
+                    <td>${user.affiliation || user.organization || '-'}</td>
                     <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
@@ -567,7 +567,7 @@ class AdminSystem {
             return `
                 <tr>
                     <td>${course?.title || '알 수 없음'}</td>
-                    <td>${user?.organization || '-'}</td>
+                    <td>${user?.affiliation || user?.organization || '-'}</td>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${progress}%</td>
@@ -708,7 +708,7 @@ class AdminSystem {
             return `
                 <tr>
                     <td>${course?.title || '알 수 없음'}</td>
-                    <td>${user?.organization || '-'}</td>
+                    <td>${user?.affiliation || user?.organization || '-'}</td>
                     <td>${user?.name || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${progress}%</td>
