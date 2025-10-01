@@ -165,6 +165,23 @@ class FirebaseService {
         });
     }
 
+    // 사용자 정보 업데이트
+    async updateUser(userId, userData) {
+        if (!this.isFirebaseReady) {
+            console.warn('Firebase 비활성화 - localStorage 사용');
+            return false;
+        }
+
+        try {
+            await db.collection(this.collections.users).doc(userId).update(userData);
+            console.log('✅ Firebase 사용자 정보 업데이트 성공');
+            return true;
+        } catch (error) {
+            console.error('사용자 정보 업데이트 오류:', error);
+            return false;
+        }
+    }
+
     // 강좌 데이터 관리
     async getCourses() {
         if (!this.isFirebaseReady) {
