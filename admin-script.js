@@ -1412,7 +1412,7 @@ class AdminSystem {
     }
 
     generateUserCSV() {
-        const headers = ['이름', '이메일', '전화번호', '시/도', '소속', '가입일', '수강강좌수'];
+        const headers = ['이름', '이메일', '휴대폰 번호', '시/도', '소속', '가입일', '수강강좌수'];
         const rows = this.users.map(user => [
             user.name,
             user.email,

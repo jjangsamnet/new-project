@@ -765,15 +765,24 @@ class LMSSystem {
 
     async handleRegister(e) {
         const formInputs = e.target.querySelectorAll('input[type="text"]');
+        const phoneInput = e.target.querySelector('input[type="tel"]').value;
+
         const userData = {
             name: formInputs[0].value,
             email: e.target.querySelector('input[type="email"]').value,
             password: e.target.querySelectorAll('input[type="password"]')[0].value,
             passwordConfirm: e.target.querySelectorAll('input[type="password"]')[1].value,
-            phone: e.target.querySelector('input[type="tel"]').value,
+            phone: phoneInput,
             region: e.target.querySelector('select').value,  // 시도 필드 추가
             organization: formInputs[1].value  // 소속 필드
         };
+
+        // 휴대폰 번호 형식 검증
+        const phonePattern = /^010-\d{4}-\d{4}$/;
+        if (!phonePattern.test(userData.phone)) {
+            alert('형식에 맞지 않습니다. 다시 입력해주세요.\n올바른 형식: 010-0000-0000');
+            return;
+        }
 
         if (userData.password !== userData.passwordConfirm) {
             alert('비밀번호가 일치하지 않습니다.');
