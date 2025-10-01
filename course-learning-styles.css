@@ -139,7 +139,7 @@ body {
 .learning-main {
     display: flex;
     margin-top: 70px;
-    height: calc(100vh - 70px);
+    min-height: calc(100vh - 70px);
 }
 
 /* 사이드바 */
@@ -242,7 +242,8 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* 비디오 컨테이너 */
