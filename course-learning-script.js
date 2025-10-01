@@ -25,8 +25,11 @@ class CourseLearningSystem {
         const urlParams = new URLSearchParams(window.location.search);
         const courseId = urlParams.get('courseId');
 
+        console.log('📋 URL에서 가져온 courseId:', courseId);
+
         if (courseId) {
-            await this.loadCourse(parseInt(courseId));
+            // courseId를 그대로 전달 (숫자/문자열 모두 지원)
+            await this.loadCourse(courseId);
         } else {
             // 기본적으로 JavaScript 완전정복 강좌 로드
             await this.loadCourse(1);
