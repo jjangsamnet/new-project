@@ -585,6 +585,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
+                    <td>${user.region || '-'}</td>
                     <td>${user.organization || '-'}</td>
                     <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
@@ -710,6 +711,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
+                    <td>${user.region || '-'}</td>
                     <td>${user.organization || '-'}</td>
                     <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
@@ -1410,11 +1412,12 @@ class AdminSystem {
     }
 
     generateUserCSV() {
-        const headers = ['이름', '이메일', '전화번호', '소속', '가입일', '수강강좌수'];
+        const headers = ['이름', '이메일', '전화번호', '시/도', '소속', '가입일', '수강강좌수'];
         const rows = this.users.map(user => [
             user.name,
             user.email,
             user.phone || '',
+            user.region || '',
             user.organization || '',
             this.formatDate(user.registeredAt),
             this.enrollments.filter(e => e.userId === user.id).length

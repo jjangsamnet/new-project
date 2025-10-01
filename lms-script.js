@@ -631,6 +631,7 @@ class LMSSystem {
                     email: userData.email,
                     password: userData.password,
                     phone: userData.phone,
+                    region: userData.region,
                     organization: userData.organization,
                     registeredAt: new Date().toISOString()
                 };
@@ -770,7 +771,8 @@ class LMSSystem {
             password: e.target.querySelectorAll('input[type="password"]')[0].value,
             passwordConfirm: e.target.querySelectorAll('input[type="password"]')[1].value,
             phone: e.target.querySelector('input[type="tel"]').value,
-            organization: formInputs[1].value  // 소속 필드 추가
+            region: e.target.querySelector('select').value,  // 시도 필드 추가
+            organization: formInputs[1].value  // 소속 필드
         };
 
         if (userData.password !== userData.passwordConfirm) {

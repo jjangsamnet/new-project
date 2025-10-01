@@ -67,6 +67,7 @@ class FirebaseService {
                 email: email,
                 name: userData.name,
                 phone: userData.phone,
+                region: userData.region,
                 organization: userData.organization,
                 authMethod: 'firebase',
                 registeredAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -79,6 +80,7 @@ class FirebaseService {
                     email: email,
                     name: userData.name,
                     phone: userData.phone,
+                    region: userData.region,
                     organization: userData.organization,
                     authMethod: 'firebase'
                 }
