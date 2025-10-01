@@ -1239,6 +1239,7 @@ class LMSSystem {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>수강증 - ${course.title}</title>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                 <style>
                     @media print {
                         body { margin: 0; }
@@ -1379,9 +1380,24 @@ class LMSSystem {
                 </div>
 
                 <div class="btn-container no-print">
+                    <button class="btn btn-print" onclick="downloadPDF()">PDF 다운로드</button>
                     <button class="btn btn-print" onclick="window.print()">인쇄하기</button>
                     <button class="btn btn-close" onclick="window.close()">닫기</button>
                 </div>
+
+                <script>
+                    function downloadPDF() {
+                        const element = document.querySelector('.certificate');
+                        const opt = {
+                            margin: 10,
+                            filename: '수강증_${this.currentUser.name}_${course.title}.pdf',
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        html2pdf().set(opt).from(element).save();
+                    }
+                </script>
             </body>
             </html>
         `;
