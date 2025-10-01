@@ -585,6 +585,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
+                    <td>${user.organization || '-'}</td>
                     <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
@@ -709,6 +710,7 @@ class AdminSystem {
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
+                    <td>${user.organization || '-'}</td>
                     <td>${this.formatDate(user.registeredAt)}</td>
                     <td>${userEnrollments.length}</td>
                     <td><span class="status-badge status-active">활성</span></td>
@@ -1408,12 +1410,13 @@ class AdminSystem {
     }
 
     generateUserCSV() {
-        const headers = ['이름', '이메일', '전화번호', '가입일', '수강강좌수'];
+        const headers = ['이름', '이메일', '전화번호', '소속', '가입일', '수강강좌수'];
         const rows = this.users.map(user => [
             user.name,
             user.email,
             user.phone || '',
-            new Date(user.registeredAt).toLocaleDateString('ko-KR'),
+            user.organization || '',
+            this.formatDate(user.registeredAt),
             this.enrollments.filter(e => e.userId === user.id).length
         ]);
 

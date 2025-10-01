@@ -67,6 +67,7 @@ class FirebaseService {
                 email: email,
                 name: userData.name,
                 phone: userData.phone,
+                organization: userData.organization,
                 authMethod: 'firebase',
                 registeredAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -78,6 +79,7 @@ class FirebaseService {
                     email: email,
                     name: userData.name,
                     phone: userData.phone,
+                    organization: userData.organization,
                     authMethod: 'firebase'
                 }
             };

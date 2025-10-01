@@ -631,6 +631,7 @@ class LMSSystem {
                     email: userData.email,
                     password: userData.password,
                     phone: userData.phone,
+                    organization: userData.organization,
                     registeredAt: new Date().toISOString()
                 };
 
@@ -762,12 +763,14 @@ class LMSSystem {
     }
 
     async handleRegister(e) {
+        const formInputs = e.target.querySelectorAll('input[type="text"]');
         const userData = {
-            name: e.target.querySelector('input[type="text"]').value,
+            name: formInputs[0].value,
             email: e.target.querySelector('input[type="email"]').value,
             password: e.target.querySelectorAll('input[type="password"]')[0].value,
             passwordConfirm: e.target.querySelectorAll('input[type="password"]')[1].value,
-            phone: e.target.querySelector('input[type="tel"]').value
+            phone: e.target.querySelector('input[type="tel"]').value,
+            organization: formInputs[1].value  // 소속 필드 추가
         };
 
         if (userData.password !== userData.passwordConfirm) {
