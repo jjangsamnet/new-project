@@ -537,6 +537,8 @@ element.classList.toggle('toggle-class');</code></pre>
                     videoPlaceholder.style.position = 'relative';
                     videoPlaceholder.style.paddingBottom = '56.25%'; // 16:9 비율
                     videoPlaceholder.style.height = '0';
+                    videoPlaceholder.style.width = '100%'; // flex 컨테이너 내에서 너비 보장
+                    videoPlaceholder.style.flex = '1'; // flex 아이템으로 공간 차지
                     videoPlaceholder.appendChild(iframe);
                     videoPlaceholder.style.display = 'block';
                 } else {
