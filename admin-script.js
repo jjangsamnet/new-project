@@ -413,9 +413,6 @@ class AdminSystem {
             this.filterCourses();
         });
 
-        document.getElementById('category-filter')?.addEventListener('change', (e) => {
-            this.filterCourses();
-        });
 
         document.getElementById('user-search')?.addEventListener('input', (e) => {
             this.filterUsers();
@@ -553,7 +550,6 @@ class AdminSystem {
                         ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
                     </div>
                 </td>
-                <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
@@ -635,15 +631,6 @@ class AdminSystem {
         }
     }
 
-    getCategoryName(category) {
-        const categories = {
-            'programming': '프로그래밍',
-            'design': '디자인',
-            'business': '비즈니스',
-            'language': '언어'
-        };
-        return categories[category] || category;
-    }
 
     getPaymentMethodName(method) {
         const methods = {
@@ -665,13 +652,10 @@ class AdminSystem {
 
     filterCourses() {
         const searchTerm = document.getElementById('course-search')?.value.toLowerCase() || '';
-        const categoryFilter = document.getElementById('category-filter')?.value || '';
 
         const filteredCourses = this.courses.filter(course => {
-            const matchesSearch = course.title.toLowerCase().includes(searchTerm) ||
-                                course.instructor.toLowerCase().includes(searchTerm);
-            const matchesCategory = !categoryFilter || course.category === categoryFilter;
-            return matchesSearch && matchesCategory;
+            return course.title.toLowerCase().includes(searchTerm) ||
+                   course.instructor.toLowerCase().includes(searchTerm);
         });
 
         const tbody = document.getElementById('courses-table-body');
@@ -683,7 +667,6 @@ class AdminSystem {
                         ${course.video ? '<span class="video-indicator">🎥</span>' : ''}
                     </div>
                 </td>
-                <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
@@ -775,7 +758,6 @@ class AdminSystem {
 
         // 폼 필드 채우기
         document.getElementById('course-title-input').value = course.title;
-        document.getElementById('course-category-input').value = course.category;
         document.getElementById('course-instructor-input').value = course.instructor;
         document.getElementById('course-duration-input').value = course.duration;
         document.getElementById('course-level-input').value = course.level;
@@ -833,7 +815,6 @@ class AdminSystem {
 
         const formData = {
             title: document.getElementById('course-title-input').value,
-            category: document.getElementById('course-category-input').value,
             instructor: document.getElementById('course-instructor-input').value,
             duration: document.getElementById('course-duration-input').value,
             level: document.getElementById('course-level-input').value,
