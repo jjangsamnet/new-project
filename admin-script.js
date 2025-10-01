@@ -10,6 +10,7 @@ class AdminSystem {
         this.currentEditingCourse = null;
         this.currentEditingLesson = null;
         this.isAuthenticated = false;
+        this.listenersSetup = false; // 리스너 중복 설정 방지
 
         // 관리자 계정 정보
         this.adminCredentials = {
@@ -27,6 +28,11 @@ class AdminSystem {
 
         console.log('🔥 AdminSystem Firebase 초기화 완료:', this.isFirebaseReady);
 
+        // 실시간 리스너 설정
+        if (this.isFirebaseReady) {
+            this.setupRealtimeListeners();
+        }
+
         // 일반 초기화
         this.init();
 
@@ -35,6 +41,11 @@ class AdminSystem {
             if (this.isFirebaseReady !== firebaseService.isFirebaseReady) {
                 console.log('🔄 Firebase 상태 변경 감지:', firebaseService.isFirebaseReady);
                 this.isFirebaseReady = firebaseService.isFirebaseReady;
+
+                // Firebase가 준비되면 실시간 리스너 설정
+                if (this.isFirebaseReady) {
+                    this.setupRealtimeListeners();
+                }
             }
         }, 1000);
     }
@@ -1446,6 +1457,101 @@ class AdminSystem {
 
     hideLoading() {
         document.getElementById('loading-overlay').classList.remove('show');
+    }
+
+    setupRealtimeListeners() {
+        if (!this.isFirebaseReady || typeof db === 'undefined') {
+            console.warn('⚠️ Firebase가 준비되지 않아 실시간 리스너를 설정할 수 없습니다.');
+            return;
+        }
+
+        if (this.listenersSetup) {
+            console.log('ℹ️ Firebase 실시간 리스너가 이미 설정되어 있습니다.');
+            return;
+        }
+
+        console.log('🔔 Admin Firebase 실시간 리스너 설정 중...');
+        this.listenersSetup = true;
+
+        try {
+            // 강좌 데이터 실시간 리스너
+            db.collection('courses').onSnapshot((snapshot) => {
+                console.log('🔄 [Admin] 강좌 데이터 실시간 업데이트 감지');
+
+                const updatedCourses = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                if (JSON.stringify(this.courses) !== JSON.stringify(updatedCourses)) {
+                    console.log('📚 [Admin] 강좌 데이터 변경됨 - 테이블 업데이트');
+                    this.courses = updatedCourses;
+                    localStorage.setItem('lms_courses', JSON.stringify(this.courses));
+                    this.loadCourses();
+                }
+            }, (error) => {
+                console.error('[Admin] 강좌 실시간 리스너 오류:', error);
+            });
+
+            // 사용자 데이터 실시간 리스너
+            db.collection('users').onSnapshot((snapshot) => {
+                console.log('🔄 [Admin] 사용자 데이터 실시간 업데이트 감지');
+
+                const updatedUsers = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                if (JSON.stringify(this.users) !== JSON.stringify(updatedUsers)) {
+                    console.log('👥 [Admin] 사용자 데이터 변경됨 - 테이블 업데이트');
+                    this.users = updatedUsers;
+                    localStorage.setItem('lms_users', JSON.stringify(this.users));
+                    this.loadUsers();
+                }
+            }, (error) => {
+                console.error('[Admin] 사용자 실시간 리스너 오류:', error);
+            });
+
+            // 수강신청 데이터 실시간 리스너
+            db.collection('enrollments').onSnapshot((snapshot) => {
+                console.log('🔄 [Admin] 수강신청 데이터 실시간 업데이트 감지');
+
+                const updatedEnrollments = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                if (JSON.stringify(this.enrollments) !== JSON.stringify(updatedEnrollments)) {
+                    console.log('🎓 [Admin] 수강신청 데이터 변경됨 - 테이블 업데이트');
+                    this.enrollments = updatedEnrollments;
+                    localStorage.setItem('lms_enrollments', JSON.stringify(this.enrollments));
+                    this.loadEnrollments();
+                }
+            }, (error) => {
+                console.error('[Admin] 수강신청 실시간 리스너 오류:', error);
+            });
+
+            // 설정 데이터 실시간 리스너
+            db.collection('settings').doc('main').onSnapshot((doc) => {
+                console.log('🔄 [Admin] 설정 데이터 실시간 업데이트 감지');
+
+                if (doc.exists) {
+                    const updatedSettings = doc.data();
+                    console.log('⚙️ [Admin] 설정 데이터 변경됨:', updatedSettings);
+
+                    this.settings = { ...this.getDefaultSettings(), ...updatedSettings };
+                    localStorage.setItem('lms_settings', JSON.stringify(this.settings));
+                    this.loadSettings();
+                }
+            }, (error) => {
+                console.error('[Admin] 설정 실시간 리스너 오류:', error);
+            });
+
+            console.log('✅ [Admin] Firebase 실시간 리스너 설정 완료');
+
+        } catch (error) {
+            console.error('[Admin] Firebase 리스너 설정 오류:', error);
+        }
     }
 }
 
