@@ -518,30 +518,39 @@ class LMSSystem {
     renderMyCoursesGrid(courses) {
         return `
             <div class="my-courses-grid">
-                ${courses.map(course => `
-                    <div class="my-course-card">
-                        <div class="course-thumbnail">
-                            ${course.thumbnail
-                                ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`
-                                : `<div class="placeholder-image"><span>강좌 썸네일</span></div>`
-                            }
-                            <div class="course-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 25%"></div>
+                ${courses.map(course => {
+                    // 해당 강좌의 enrollment 찾기
+                    const enrollment = this.enrollments.find(e =>
+                        e.userId === this.currentUser.id &&
+                        e.courseId === course.id
+                    );
+                    const progress = enrollment?.progress || 0;
+
+                    return `
+                        <div class="my-course-card">
+                            <div class="course-thumbnail">
+                                ${course.thumbnail
+                                    ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`
+                                    : `<div class="placeholder-image"><span>강좌 썸네일</span></div>`
+                                }
+                                <div class="course-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${progress}%"></div>
+                                    </div>
+                                    <span class="progress-text">${progress}% 완료</span>
                                 </div>
-                                <span class="progress-text">25% 완료</span>
+                            </div>
+                            <div class="course-content">
+                                <h3 class="course-title">${course.title}</h3>
+                                <p class="course-instructor">강사: ${course.instructor}</p>
+                                <div class="course-actions">
+                                    <button class="btn btn-primary" onclick="continueLearning(${course.id})">학습 계속하기</button>
+                                    <button class="btn btn-outline" onclick="viewCourseDetail(${course.id})">강좌 정보</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="course-content">
-                            <h3 class="course-title">${course.title}</h3>
-                            <p class="course-instructor">강사: ${course.instructor}</p>
-                            <div class="course-actions">
-                                <button class="btn btn-primary" onclick="continueLearning(${course.id})">학습 계속하기</button>
-                                <button class="btn btn-outline" onclick="viewCourseDetail(${course.id})">강좌 정보</button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     }
