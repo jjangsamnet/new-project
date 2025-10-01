@@ -270,9 +270,6 @@
                         <div class="course-level">
                             <strong>난이도:</strong> <span id="course-level">난이도</span>
                         </div>
-                        <div class="course-price">
-                            <strong>수강료:</strong> <span id="course-price">가격</span>
-                        </div>
                     </div>
                 </div>
                 <div class="course-description">
@@ -306,19 +303,10 @@
                     <div class="selected-course">
                         <h4 id="enrollment-course-title">강좌명</h4>
                         <p><strong>강사:</strong> <span id="enrollment-instructor">강사명</span></p>
-                        <p><strong>수강료:</strong> <span id="enrollment-price">가격</span></p>
+                        <p class="free-course-badge" style="color: #28a745; font-weight: bold; font-size: 1.1em; margin-top: 10px;">🎓 무료 강좌</p>
                     </div>
                 </div>
                 <form class="enrollment-form">
-                    <div class="form-group">
-                        <label>결제 방법</label>
-                        <select required>
-                            <option value="">결제 방법을 선택하세요</option>
-                            <option value="card">신용카드</option>
-                            <option value="bank">무통장입금</option>
-                            <option value="kakao">카카오페이</option>
-                        </select>
-                    </div>
                     <div class="form-group checkbox-group">
                         <label>
                             <input type="checkbox" required>
@@ -326,7 +314,7 @@
                             수강 약관에 동의합니다.
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-full">결제하기</button>
+                    <button type="submit" class="btn btn-primary btn-full">수강 신청하기</button>
                 </form>
             </div>
         </div>

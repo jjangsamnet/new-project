@@ -11,7 +11,6 @@ class LMSSystem {
                 title: "JavaScript 완전정복",
                 instructor: "김개발",
                 category: "programming",
-                price: "₩150,000",
                 duration: "8주",
                 level: "초급",
                 rating: 4.8,
@@ -30,7 +29,6 @@ class LMSSystem {
                 title: "React 마스터클래스",
                 instructor: "이프론트",
                 category: "programming",
-                price: "₩200,000",
                 duration: "10주",
                 level: "중급",
                 rating: 4.9,
@@ -49,7 +47,6 @@ class LMSSystem {
                 title: "UI/UX 디자인 기초",
                 instructor: "박디자인",
                 category: "design",
-                price: "₩120,000",
                 duration: "6주",
                 level: "초급",
                 rating: 4.7,
@@ -68,7 +65,6 @@ class LMSSystem {
                 title: "비즈니스 전략 기획",
                 instructor: "최전략",
                 category: "business",
-                price: "₩180,000",
                 duration: "8주",
                 level: "중급",
                 rating: 4.6,
@@ -87,7 +83,6 @@ class LMSSystem {
                 title: "영어 회화 완성",
                 instructor: "존 스미스",
                 category: "language",
-                price: "₩100,000",
                 duration: "12주",
                 level: "초급",
                 rating: 4.8,
@@ -106,7 +101,6 @@ class LMSSystem {
                 title: "Figma 마스터",
                 instructor: "김피그마",
                 category: "design",
-                price: "₩90,000",
                 duration: "4주",
                 level: "초급",
                 rating: 4.9,
@@ -312,7 +306,7 @@ class LMSSystem {
                     <h3 class="course-title">${course.title}</h3>
                     <p class="course-instructor">강사: ${course.instructor}</p>
                     <div class="course-footer">
-                        <span class="course-price">${course.price}</span>
+                        <span class="course-badge" style="background: #28a745; color: white; padding: 5px 12px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">무료</span>
                         <div class="course-rating">
                             <span>⭐ ${course.rating}</span>
                             <span>(${course.students})</span>
@@ -378,7 +372,6 @@ class LMSSystem {
         document.getElementById('course-instructor').textContent = course.instructor;
         document.getElementById('course-duration').textContent = course.duration;
         document.getElementById('course-level').textContent = course.level;
-        document.getElementById('course-price').textContent = course.price;
         document.getElementById('course-description-text').textContent = course.description;
 
         // 커리큘럼 렌더링
@@ -479,7 +472,6 @@ class LMSSystem {
         // 수강신청 모달에 정보 설정
         document.getElementById('enrollment-course-title').textContent = course.title;
         document.getElementById('enrollment-instructor').textContent = course.instructor;
-        document.getElementById('enrollment-price').textContent = course.price;
 
         // 수강신청 모달 표시
         this.closeModal('course-detail-modal');
@@ -488,13 +480,7 @@ class LMSSystem {
 
     async handleEnrollment(e) {
         const courseId = parseInt(document.querySelector('#course-detail-modal .btn-primary').getAttribute('data-course-id'));
-        const paymentMethod = e.target.querySelector('select').value;
         const agreeTerms = e.target.querySelector('input[type="checkbox"]').checked;
-
-        if (!paymentMethod) {
-            alert('결제 방법을 선택해주세요.');
-            return;
-        }
 
         if (!agreeTerms) {
             alert('수강 약관에 동의해주세요.');

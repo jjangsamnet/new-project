@@ -555,7 +555,6 @@ class AdminSystem {
                 </td>
                 <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
-                <td>${course.price}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
                 <td>
@@ -686,7 +685,6 @@ class AdminSystem {
                 </td>
                 <td>${this.getCategoryName(course.category)}</td>
                 <td>${course.instructor}</td>
-                <td>${course.price}</td>
                 <td>${course.students || 0}</td>
                 <td><span class="status-badge status-${course.status || 'active'}">${course.status === 'active' ? '활성' : '비활성'}</span></td>
                 <td>
@@ -779,7 +777,6 @@ class AdminSystem {
         document.getElementById('course-title-input').value = course.title;
         document.getElementById('course-category-input').value = course.category;
         document.getElementById('course-instructor-input').value = course.instructor;
-        document.getElementById('course-price-input').value = course.price;
         document.getElementById('course-duration-input').value = course.duration;
         document.getElementById('course-level-input').value = course.level;
         document.getElementById('course-description-input').value = course.description;
@@ -838,7 +835,6 @@ class AdminSystem {
             title: document.getElementById('course-title-input').value,
             category: document.getElementById('course-category-input').value,
             instructor: document.getElementById('course-instructor-input').value,
-            price: document.getElementById('course-price-input').value,
             duration: document.getElementById('course-duration-input').value,
             level: document.getElementById('course-level-input').value,
             description: document.getElementById('course-description-input').value,
