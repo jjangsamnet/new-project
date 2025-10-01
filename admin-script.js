@@ -1157,6 +1157,51 @@ class AdminSystem {
         }
     }
 
+    async deleteAllCourses() {
+        if (!confirm('⚠️ 경고: 모든 강좌를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) {
+            return;
+        }
+
+        if (!confirm('정말로 모든 강좌를 삭제하시겠습니까?\n\nFirebase와 로컬 저장소의 모든 강좌 데이터가 삭제됩니다.')) {
+            return;
+        }
+
+        try {
+            console.log('🗑️ 모든 강좌 삭제 시작...');
+
+            // Firebase에서 모든 강좌 삭제
+            if (this.isFirebaseReady && typeof db !== 'undefined') {
+                console.log('🔥 Firebase에서 강좌 삭제 중...');
+                const snapshot = await db.collection('courses').get();
+                console.log(`삭제할 강좌 수: ${snapshot.size}`);
+
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                console.log('✅ Firebase 강좌 삭제 완료');
+            }
+
+            // 로컬 배열 초기화
+            this.courses = [];
+
+            // localStorage 삭제
+            localStorage.removeItem('lms_courses');
+            console.log('✅ localStorage 강좌 삭제 완료');
+
+            // UI 업데이트
+            this.loadCourses();
+            this.updateStats();
+
+            alert('✅ 모든 강좌가 삭제되었습니다!');
+
+        } catch (error) {
+            console.error('❌ 강좌 삭제 오류:', error);
+            alert('강좌 삭제 중 오류가 발생했습니다: ' + error.message);
+        }
+    }
+
     async saveSettings() {
         console.log('⚙️ 설정 저장 시작...');
         console.log('Firebase 상태:', this.isFirebaseReady);

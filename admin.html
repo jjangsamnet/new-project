@@ -143,7 +143,10 @@
         <section id="courses" class="content-section">
             <div class="section-header">
                 <h2>강좌 관리</h2>
-                <button class="btn btn-primary" onclick="showAddCourseModal()">새 강좌 추가</button>
+                <div>
+                    <button class="btn btn-primary" onclick="showAddCourseModal()">새 강좌 추가</button>
+                    <button class="btn btn-danger" onclick="admin.deleteAllCourses()" style="margin-left: 10px;">모든 강좌 삭제</button>
+                </div>
             </div>
 
             <div class="filters">
