@@ -217,6 +217,12 @@ class LMSSystem {
         });
         document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
 
+        // "내 강좌" 섹션일 경우 강좌 목록 로드
+        if (sectionId === 'my-courses' && this.currentUser) {
+            console.log('📖 "내 강좌" 섹션 활성화 - loadMyCourses() 호출');
+            this.loadMyCourses();
+        }
+
         // 페이지 상단으로 스크롤
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
