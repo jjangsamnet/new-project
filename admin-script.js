@@ -756,6 +756,20 @@ class AdminSystem {
             }
         }
 
+        // 썸네일 이미지가 있으면 표시
+        if (course.thumbnail) {
+            const thumbnailPreview = document.getElementById('thumbnail-preview');
+            const thumbnailPlaceholder = document.getElementById('thumbnail-placeholder');
+            const thumbnailActions = document.getElementById('thumbnail-actions');
+            const thumbnailUrlHidden = document.getElementById('thumbnail-url-hidden');
+
+            thumbnailPreview.src = course.thumbnail;
+            thumbnailPreview.style.display = 'block';
+            thumbnailPlaceholder.style.display = 'none';
+            thumbnailActions.style.display = 'block';
+            thumbnailUrlHidden.value = course.thumbnail;
+        }
+
         // 차시 목록 로드
         this.loadLessons();
 
@@ -783,6 +797,7 @@ class AdminSystem {
 
     async saveCourse() {
         const videoUrl = document.getElementById('video-url-input')?.value || '';
+        const thumbnailUrl = document.getElementById('thumbnail-url-hidden')?.value || '';
 
         // 영상 데이터 수집
         let videoData = null;
@@ -802,7 +817,8 @@ class AdminSystem {
             level: document.getElementById('course-level-input').value,
             description: document.getElementById('course-description-input').value,
             curriculum: document.getElementById('course-curriculum-input').value.split('\n').filter(item => item.trim()),
-            video: videoData
+            video: videoData,
+            thumbnail: thumbnailUrl || null
         };
 
         let courseToSave;
@@ -1747,3 +1763,62 @@ window.addEventListener('resize', () => {
         document.querySelector('.sidebar').classList.remove('open');
     }
 });
+
+// 썸네일 이미지 관련 함수
+document.addEventListener('DOMContentLoaded', () => {
+    const thumbnailInput = document.getElementById('thumbnail-image-input');
+    if (thumbnailInput) {
+        thumbnailInput.addEventListener('change', handleThumbnailUpload);
+    }
+});
+
+function handleThumbnailUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('이미지 파일 크기는 5MB 이하여야 합니다.');
+        return;
+    }
+
+    // 이미지 파일 체크
+    if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const thumbnailPreview = document.getElementById('thumbnail-preview');
+        const thumbnailPlaceholder = document.getElementById('thumbnail-placeholder');
+        const thumbnailActions = document.getElementById('thumbnail-actions');
+        const thumbnailUrlHidden = document.getElementById('thumbnail-url-hidden');
+
+        thumbnailPreview.src = e.target.result;
+        thumbnailPreview.style.display = 'block';
+        thumbnailPlaceholder.style.display = 'none';
+        thumbnailActions.style.display = 'block';
+        thumbnailUrlHidden.value = e.target.result; // Base64 저장
+
+        console.log('✅ 썸네일 이미지 업로드 완료');
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeThumbnail() {
+    const thumbnailPreview = document.getElementById('thumbnail-preview');
+    const thumbnailPlaceholder = document.getElementById('thumbnail-placeholder');
+    const thumbnailActions = document.getElementById('thumbnail-actions');
+    const thumbnailInput = document.getElementById('thumbnail-image-input');
+    const thumbnailUrlHidden = document.getElementById('thumbnail-url-hidden');
+
+    thumbnailPreview.src = '';
+    thumbnailPreview.style.display = 'none';
+    thumbnailPlaceholder.style.display = 'block';
+    thumbnailActions.style.display = 'none';
+    thumbnailInput.value = '';
+    thumbnailUrlHidden.value = '';
+
+    console.log('🗑️ 썸네일 이미지 제거됨');
+}

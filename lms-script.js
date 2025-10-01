@@ -180,7 +180,10 @@ class LMSSystem {
         coursesGrid.innerHTML = coursesToRender.map(course => `
             <div class="course-card" onclick="lms.showCourseDetail(${course.id})">
                 <div class="course-image">
-                    <div class="placeholder-image">강좌 썸네일</div>
+                    ${course.thumbnail
+                        ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover;">`
+                        : '<div class="placeholder-image">강좌 썸네일</div>'
+                    }
                 </div>
                 <div class="course-content">
                     <h3 class="course-title">${course.title}</h3>
@@ -518,9 +521,10 @@ class LMSSystem {
                 ${courses.map(course => `
                     <div class="my-course-card">
                         <div class="course-thumbnail">
-                            <div class="placeholder-image">
-                                <span>강좌 썸네일</span>
-                            </div>
+                            ${course.thumbnail
+                                ? `<img src="${course.thumbnail}" alt="${course.title}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`
+                                : `<div class="placeholder-image"><span>강좌 썸네일</span></div>`
+                            }
                             <div class="course-progress">
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: 25%"></div>
