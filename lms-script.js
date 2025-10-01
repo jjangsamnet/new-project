@@ -1255,56 +1255,41 @@ class LMSSystem {
                     }
                     .cert-content {
                         position: relative;
-                        text-align: center;
+                        text-align: right;
                     }
                     .cert-title {
-                        font-size: 48px;
+                        font-size: 36px;
                         font-weight: bold;
                         color: #2c5aa0;
                         margin-bottom: 40px;
-                        letter-spacing: 10px;
+                        letter-spacing: 8px;
                     }
                     .cert-name {
-                        font-size: 36px;
+                        font-size: 28px;
                         font-weight: bold;
                         margin: 30px 0;
-                        border-bottom: 2px solid #333;
-                        padding-bottom: 10px;
                         display: inline-block;
-                        min-width: 300px;
                     }
                     .cert-course {
-                        font-size: 24px;
+                        font-size: 18px;
                         margin: 30px 0;
-                        line-height: 1.6;
+                        line-height: 1.4;
                     }
                     .cert-text {
-                        font-size: 18px;
+                        font-size: 20px;
                         line-height: 1.8;
                         margin: 20px 0;
                         color: #333;
                     }
                     .cert-date {
-                        font-size: 20px;
+                        font-size: 18px;
                         margin-top: 40px;
                     }
                     .cert-org {
-                        font-size: 28px;
+                        font-size: 24px;
                         font-weight: bold;
                         margin-top: 50px;
                         color: #2c5aa0;
-                    }
-                    .cert-seal {
-                        display: inline-block;
-                        width: 100px;
-                        height: 100px;
-                        border: 3px solid #d4af37;
-                        border-radius: 50%;
-                        line-height: 100px;
-                        margin-top: 30px;
-                        font-size: 16px;
-                        font-weight: bold;
-                        color: #d4af37;
                     }
                     .btn-container {
                         text-align: center;
@@ -1352,10 +1337,6 @@ class LMSSystem {
 
                         <div class="cert-org">
                             (사)한국창의정보문화학회
-                        </div>
-
-                        <div class="cert-seal">
-                            인
                         </div>
                     </div>
                 </div>
