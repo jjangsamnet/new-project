@@ -70,17 +70,6 @@
                         <button class="control-btn" id="play-pause-btn" onclick="togglePlayPause()">▶️</button>
                         <button class="control-btn" onclick="nextLesson()">⏭️</button>
                     </div>
-                    <div class="speed-controls">
-                        <label>재생 속도:</label>
-                        <select id="playback-speed" onchange="changePlaybackSpeed()">
-                            <option value="0.5">0.5x</option>
-                            <option value="0.75">0.75x</option>
-                            <option value="1" selected>1x</option>
-                            <option value="1.25">1.25x</option>
-                            <option value="1.5">1.5x</option>
-                            <option value="2">2x</option>
-                        </select>
-                    </div>
                 </div>
             </div>
 
@@ -102,17 +91,6 @@
 
             <!-- 강의 컨트롤 영역 -->
             <div class="lesson-controls">
-                <div class="control-group">
-                    <label for="lesson-speed">재생 속도:</label>
-                    <select id="lesson-speed" onchange="changeLessonSpeed()">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1" selected>1x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2">2x</option>
-                    </select>
-                </div>
                 <div class="control-group">
                     <button class="completion-btn" id="mark-complete-btn" onclick="markLessonComplete()">
                         <span class="btn-icon">✓</span>
@@ -251,6 +229,6 @@
     <script src="firebase-service.js"></script>
 
     <!-- 학습 페이지 스크립트 -->
-    <script src="course-learning-script.js?v=2024120310"></script>
+    <script src="course-learning-script.js?v=2024120311"></script>
 </body>
 </html>
