@@ -1339,10 +1339,13 @@ class LMSSystem {
                     .btn-container {
                         text-align: center;
                         margin-top: 30px;
+                        display: flex;
+                        justify-content: center;
+                        gap: 15px;
+                        flex-wrap: wrap;
                     }
                     .btn {
                         padding: 12px 30px;
-                        margin: 0 10px;
                         border: none;
                         border-radius: 5px;
                         font-size: 16px;
@@ -1353,9 +1356,15 @@ class LMSSystem {
                         background: #2c5aa0;
                         color: white;
                     }
+                    .btn-print:hover {
+                        background: #1e3a6e;
+                    }
                     .btn-close {
                         background: #666;
                         color: white;
+                    }
+                    .btn-close:hover {
+                        background: #444;
                     }
                 </style>
             </head>
