@@ -525,12 +525,17 @@ class LMSSystem {
         return `
             <div class="my-courses-grid">
                 ${courses.map(course => {
-                    // 해당 강좌의 enrollment 찾기
-                    const enrollment = this.enrollments.find(e =>
+                    // 해당 강좌의 모든 enrollment 찾기 (중복 가능)
+                    const userEnrollments = this.enrollments.filter(e =>
                         e.userId === this.currentUser.id &&
                         e.courseId === course.id
                     );
-                    const progress = enrollment?.progress || 0;
+
+                    // 가장 높은 진도율 선택
+                    let progress = 0;
+                    if (userEnrollments.length > 0) {
+                        progress = Math.max(...userEnrollments.map(e => e.progress || 0));
+                    }
 
                     return `
                         <div class="my-course-card">
@@ -1205,12 +1210,20 @@ class LMSSystem {
             return;
         }
 
-        // 수강신청 정보 찾기
-        const enrollment = this.enrollments.find(e =>
+        // 수강신청 정보 찾기 (중복 가능하므로 최대 진도율 사용)
+        const userEnrollments = this.enrollments.filter(e =>
             e.userId === this.currentUser.id && e.courseId == courseId
         );
-        if (!enrollment || enrollment.progress < 90) {
-            alert('수강 완료율이 90% 미만입니다.');
+
+        if (userEnrollments.length === 0) {
+            alert('수강신청 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        const maxProgress = Math.max(...userEnrollments.map(e => e.progress || 0));
+
+        if (maxProgress < 90) {
+            alert(`수강 완료율이 90% 미만입니다. (현재: ${maxProgress}%)`);
             return;
         }
 
