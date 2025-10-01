@@ -503,10 +503,16 @@ class LMSSystem {
             return foundCourse;
         }).filter(course => course); // null 값 제거
 
-        console.log('최종 enrolledCourses:', enrolledCourses.length, '개');
-        console.log('렌더링할 강좌들:', enrolledCourses.map(c => c.title));
+        // 중복 강좌 제거 (같은 courseId를 가진 강좌가 여러 개 있을 경우)
+        const uniqueCourses = enrolledCourses.filter((course, index, self) =>
+            index === self.findIndex(c => c.id === course.id)
+        );
 
-        const renderedHtml = this.renderMyCoursesGrid(enrolledCourses);
+        console.log('중복 제거 전:', enrolledCourses.length, '개');
+        console.log('최종 enrolledCourses:', uniqueCourses.length, '개');
+        console.log('렌더링할 강좌들:', uniqueCourses.map(c => c.title));
+
+        const renderedHtml = this.renderMyCoursesGrid(uniqueCourses);
         console.log('생성된 HTML 길이:', renderedHtml.length);
 
         enrolledCoursesContainer.innerHTML = renderedHtml;
