@@ -1433,6 +1433,72 @@ class LMSSystem {
         certificateWindow.document.close();
     }
 
+    // 회원정보 모달 표시
+    showUserProfileModal() {
+        if (!this.currentUser) {
+            alert('로그인이 필요합니다.');
+            return;
+        }
+
+        // 현재 사용자 정보로 폼 채우기
+        document.getElementById('profile-name').value = this.currentUser.name || '';
+        document.getElementById('profile-email').value = this.currentUser.email || '';
+        document.getElementById('profile-phone').value = this.currentUser.phone || '';
+        document.getElementById('profile-affiliation').value = this.currentUser.affiliation || '';
+        document.getElementById('profile-region').value = this.currentUser.region || '';
+
+        // 모달 표시
+        document.getElementById('user-profile-modal').style.display = 'block';
+
+        // 폼 제출 이벤트 리스너
+        const form = document.getElementById('user-profile-form');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            await this.updateUserProfile();
+        };
+    }
+
+    // 회원정보 업데이트
+    async updateUserProfile() {
+        const name = document.getElementById('profile-name').value;
+        const phone = document.getElementById('profile-phone').value;
+        const affiliation = document.getElementById('profile-affiliation').value;
+        const region = document.getElementById('profile-region').value;
+
+        try {
+            // 사용자 정보 업데이트
+            this.currentUser.name = name;
+            this.currentUser.phone = phone;
+            this.currentUser.affiliation = affiliation;
+            this.currentUser.region = region;
+
+            // Firebase 또는 localStorage에 저장
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                await firebaseService.updateUser(this.currentUser.id, {
+                    name: name,
+                    phone: phone,
+                    affiliation: affiliation,
+                    region: region
+                });
+                console.log('✅ Firebase에 회원정보 업데이트 완료');
+            } else {
+                localStorage.setItem('lms_current_user', JSON.stringify(this.currentUser));
+                console.log('✅ localStorage에 회원정보 업데이트 완료');
+            }
+
+            // UI 업데이트
+            document.getElementById('user-name-display').textContent = name;
+
+            // 모달 닫기
+            this.closeModal('user-profile-modal');
+
+            alert('회원정보가 성공적으로 수정되었습니다.');
+        } catch (error) {
+            console.error('회원정보 업데이트 오류:', error);
+            alert('회원정보 수정 중 오류가 발생했습니다.');
+        }
+    }
+
     // 설정을 UI에 적용
     applySettings() {
         console.log('🎨 설정을 UI에 적용 중...', this.settings);
@@ -1517,6 +1583,10 @@ function showPasswordReset() {
 
 function closeModal(modalId) {
     lms.closeModal(modalId);
+}
+
+function showUserProfileModal() {
+    lms.showUserProfileModal();
 }
 
 function showSection(sectionId) {

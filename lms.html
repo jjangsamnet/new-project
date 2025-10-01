@@ -28,6 +28,7 @@
             </div>
             <div class="user-info" id="user-info" style="display: none;">
                 <span class="welcome-text">안녕하세요, <span id="user-name-display"></span>님!</span>
+                <button class="btn btn-outline" onclick="showUserProfileModal()">회원정보</button>
                 <button class="btn btn-outline" onclick="logout()">로그아웃</button>
             </div>
         </div>
@@ -268,6 +269,60 @@
                 <p>메일을 확인하고 링크를 클릭하여 새 비밀번호를 설정하세요.</p>
                 <button class="btn btn-outline" onclick="closeModal('password-reset-modal')">확인</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 회원정보 수정 모달 -->
+    <div id="user-profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>회원정보 수정</h2>
+                <span class="close" onclick="closeModal('user-profile-modal')">&times;</span>
+            </div>
+            <form class="auth-form" id="user-profile-form">
+                <div class="form-group">
+                    <label for="profile-name">이름</label>
+                    <input type="text" id="profile-name" placeholder="이름" required>
+                </div>
+                <div class="form-group">
+                    <label for="profile-email">이메일</label>
+                    <input type="email" id="profile-email" placeholder="이메일" disabled>
+                    <small style="color: #888;">이메일은 변경할 수 없습니다.</small>
+                </div>
+                <div class="form-group">
+                    <label for="profile-phone">전화번호</label>
+                    <input type="tel" id="profile-phone" placeholder="010-0000-0000">
+                </div>
+                <div class="form-group">
+                    <label for="profile-affiliation">소속</label>
+                    <input type="text" id="profile-affiliation" placeholder="소속 (예: 대화초등학교)">
+                </div>
+                <div class="form-group">
+                    <label for="profile-region">지역</label>
+                    <select id="profile-region">
+                        <option value="">지역 선택</option>
+                        <option value="서울">서울</option>
+                        <option value="경기">경기</option>
+                        <option value="인천">인천</option>
+                        <option value="부산">부산</option>
+                        <option value="대구">대구</option>
+                        <option value="광주">광주</option>
+                        <option value="대전">대전</option>
+                        <option value="울산">울산</option>
+                        <option value="세종">세종</option>
+                        <option value="강원">강원</option>
+                        <option value="충북">충북</option>
+                        <option value="충남">충남</option>
+                        <option value="전북">전북</option>
+                        <option value="전남">전남</option>
+                        <option value="경북">경북</option>
+                        <option value="경남">경남</option>
+                        <option value="제주">제주</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">저장</button>
+                <button type="button" class="btn btn-outline btn-full" onclick="closeModal('user-profile-modal')">취소</button>
+            </form>
         </div>
     </div>
 
