@@ -91,8 +91,8 @@ class CourseLearningSystem {
                 console.log('📹 차시별 영상 URL 확인:');
                 this.lessons.forEach((lesson, index) => {
                     console.log(`  차시 ${index + 1}: ${lesson.title}`);
-                    console.log(`    - videoUrl: ${lesson.videoUrl || '없음'}`);
-                    console.log(`    - videoType: ${lesson.videoType || '없음'}`);
+                    console.log(`    - video.url: ${lesson.video?.url || '없음'}`);
+                    console.log(`    - video.type: ${lesson.video?.type || '없음'}`);
                 });
             } else {
                 console.log('⚠️ 강좌에 차시 없음 - 커리큘럼에서 생성');
@@ -483,14 +483,45 @@ element.classList.toggle('toggle-class');</code></pre>
         const videoPlayer = document.getElementById('video-player');
         const videoPlaceholder = document.getElementById('video-placeholder');
         const lessonVideo = document.getElementById('lesson-video');
+        const videoUrl = lesson.video?.url;
+        const videoType = lesson.video?.type;
 
-        if (lesson.videoUrl) {
-            // 실제 비디오가 있는 경우
-            lessonVideo.src = lesson.videoUrl;
-            videoPlaceholder.style.display = 'none';
-            lessonVideo.style.display = 'block';
+        console.log('🎬 영상 로드 시도:', videoUrl, '타입:', videoType);
+
+        if (videoUrl) {
+            // 유튜브 URL인 경우 iframe으로 변환
+            if (videoType === 'url' && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be'))) {
+                const videoId = this.extractYoutubeId(videoUrl);
+                if (videoId) {
+                    console.log('✅ 유튜브 영상 ID:', videoId);
+                    const iframe = document.createElement('iframe');
+                    iframe.id = 'youtube-player';
+                    iframe.width = '100%';
+                    iframe.height = '100%';
+                    iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                    iframe.frameBorder = '0';
+                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                    iframe.allowFullscreen = true;
+
+                    // 기존 video 요소 숨기고 iframe 추가
+                    lessonVideo.style.display = 'none';
+                    videoPlaceholder.innerHTML = '';
+                    videoPlaceholder.appendChild(iframe);
+                    videoPlaceholder.style.display = 'block';
+                } else {
+                    console.error('❌ 유튜브 ID 추출 실패:', videoUrl);
+                    videoPlaceholder.style.display = 'flex';
+                    lessonVideo.style.display = 'none';
+                }
+            } else {
+                // 일반 비디오 파일
+                lessonVideo.src = videoUrl;
+                videoPlaceholder.style.display = 'none';
+                lessonVideo.style.display = 'block';
+            }
         } else {
             // 비디오가 없는 경우 플레이스홀더 표시
+            console.log('⚠️ 영상 URL 없음');
             videoPlaceholder.style.display = 'flex';
             lessonVideo.style.display = 'none';
         }
@@ -502,12 +533,35 @@ element.classList.toggle('toggle-class');</code></pre>
         }
     }
 
+    extractYoutubeId(url) {
+        // 유튜브 URL에서 비디오 ID 추출
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=)([^&]+)/,
+            /(?:youtu\.be\/)([^?]+)/,
+            /(?:youtube\.com\/embed\/)([^?]+)/
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        return null;
+    }
+
     startLesson() {
         const lesson = this.lessons[this.currentLessonIndex];
+        const videoUrl = lesson.video?.url;
 
-        if (lesson.videoUrl) {
-            const lessonVideo = document.getElementById('lesson-video');
-            lessonVideo.play();
+        if (videoUrl) {
+            // 유튜브 영상은 자동 재생되므로 별도 처리 불필요
+            if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                console.log('▶️ 유튜브 영상 준비 완료');
+            } else {
+                const lessonVideo = document.getElementById('lesson-video');
+                lessonVideo.play();
+            }
         } else {
             // 비디오가 없는 경우 안내
             alert('이 강의는 아직 비디오가 업로드되지 않았습니다.\n관리자에게 문의해주세요.');
