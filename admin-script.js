@@ -25,8 +25,18 @@ class AdminSystem {
         await firebaseService.waitForFirebase();
         this.isFirebaseReady = firebaseService.isFirebaseReady;
 
+        console.log('🔥 AdminSystem Firebase 초기화 완료:', this.isFirebaseReady);
+
         // 일반 초기화
         this.init();
+
+        // Firebase 상태가 나중에 변경될 수 있으므로 주기적으로 확인
+        setInterval(() => {
+            if (this.isFirebaseReady !== firebaseService.isFirebaseReady) {
+                console.log('🔄 Firebase 상태 변경 감지:', firebaseService.isFirebaseReady);
+                this.isFirebaseReady = firebaseService.isFirebaseReady;
+            }
+        }, 1000);
     }
 
     init() {
