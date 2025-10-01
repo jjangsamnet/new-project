@@ -613,8 +613,9 @@ class AdminSystem {
 
             return `
                 <tr>
-                    <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
+                    <td>${user?.organization || '-'}</td>
+                    <td>${user?.name || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${progress}%</td>
                     <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
@@ -753,8 +754,9 @@ class AdminSystem {
 
             return `
                 <tr>
-                    <td>${user?.name || '알 수 없음'}</td>
                     <td>${course?.title || '알 수 없음'}</td>
+                    <td>${user?.organization || '-'}</td>
+                    <td>${user?.name || '알 수 없음'}</td>
                     <td>${this.formatDate(enrollment.enrolledAt)}</td>
                     <td>${progress}%</td>
                     <td><span class="status-badge ${completionBadge}">${completionStatus}</span></td>
@@ -1448,7 +1450,7 @@ class AdminSystem {
     }
 
     generateEnrollmentCSV() {
-        const headers = ['학생명', '강좌명', '신청일', '진도율(%)', '이수여부'];
+        const headers = ['강좌명', '소속', '학생명', '신청일', '진도율(%)', '이수여부'];
         const rows = this.enrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
@@ -1457,8 +1459,9 @@ class AdminSystem {
             const completionStatus = isCompleted ? '이수' : '미이수';
 
             return [
-                user?.name || '알 수 없음',
                 course?.title || '알 수 없음',
+                user?.organization || '',
+                user?.name || '알 수 없음',
                 this.formatDate(enrollment.enrolledAt),
                 progress,
                 completionStatus
