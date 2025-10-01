@@ -977,6 +977,24 @@ class LMSSystem {
                 console.error('설정 실시간 리스너 오류:', error);
             });
 
+            // 사용자 데이터 실시간 리스너
+            db.collection('users').onSnapshot((snapshot) => {
+                console.log('🔄 사용자 데이터 실시간 업데이트 감지');
+
+                const updatedUsers = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    firebaseId: doc.id
+                }));
+
+                if (JSON.stringify(this.users) !== JSON.stringify(updatedUsers)) {
+                    console.log('👥 사용자 데이터 변경됨');
+                    this.users = updatedUsers;
+                    localStorage.setItem('lms_users', JSON.stringify(this.users));
+                }
+            }, (error) => {
+                console.error('사용자 실시간 리스너 오류:', error);
+            });
+
             console.log('✅ Firebase 실시간 리스너 설정 완료');
 
         } catch (error) {

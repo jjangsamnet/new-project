@@ -7,7 +7,10 @@
       "Bash(git commit:*)",
       "Bash(python:*)",
       "WebFetch(domain:localhost)",
-      "WebFetch(domain:jjangsamnet.github.io)"
+      "WebFetch(domain:jjangsamnet.github.io)",
+      "Bash(cmd /c:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

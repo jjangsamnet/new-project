@@ -53,13 +53,15 @@ class AdminSystem {
     async loadData() {
         try {
             if (this.isFirebaseReady) {
-                const [courses, enrollments, settings] = await Promise.all([
+                const [courses, users, enrollments, settings] = await Promise.all([
                     firebaseService.getCourses(),
+                    firebaseService.getUsers(),
                     firebaseService.getEnrollments(),
                     firebaseService.getSettings()
                 ]);
 
                 this.courses = courses.length > 0 ? courses : this.getDefaultCourses();
+                this.users = users || [];
                 this.enrollments = enrollments;
                 this.settings = settings || this.getDefaultSettings();
 
