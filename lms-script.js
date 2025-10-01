@@ -355,7 +355,7 @@ class LMSSystem {
             id: Date.now(),
             userId: this.currentUser.id,
             courseId: courseId,
-            paymentMethod: paymentMethod,
+            paymentMethod: 'free',  // 무료 강좌
             enrolledAt: new Date().toISOString(),
             status: 'enrolled'
         };
