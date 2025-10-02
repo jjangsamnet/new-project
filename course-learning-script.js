@@ -420,10 +420,11 @@ element.classList.toggle('toggle-class');</code></pre>
             const progressKey = `course_progress_${this.currentCourse.id}_${this.currentUser.id}`;
             localStorage.setItem(progressKey, JSON.stringify(this.progress));
 
-            // 전체 진도율 계산
+            // 전체 진도율 계산 (0-100% 보장)
             const completedLessons = Object.values(this.progress).filter(p => p.completed).length;
             const totalLessons = this.lessons.length;
-            const overallProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+            const calculatedProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+            const overallProgress = Math.min(100, Math.max(0, calculatedProgress));
 
             console.log(`📊 진도율 업데이트: ${completedLessons}/${totalLessons} = ${overallProgress}%`);
 
@@ -437,7 +438,8 @@ element.classList.toggle('toggle-class');</code></pre>
                     );
 
                     if (enrollment) {
-                        enrollment.progress = overallProgress;
+                        // 진도율을 0-100% 범위로 제한
+                        enrollment.progress = Math.min(100, Math.max(0, overallProgress));
                         enrollment.lastAccessedAt = new Date().toISOString();
                         const result = await firebaseService.saveEnrollment(enrollment);
                         console.log('✅ Firebase enrollment 진도율 업데이트:', overallProgress, '%');
@@ -750,7 +752,9 @@ element.classList.toggle('toggle-class');</code></pre>
             this.progress[lesson.id]?.completed
         ).length;
 
-        const progressPercent = Math.round((completedLessons / this.lessons.length) * 100);
+        const calculatedProgress = Math.round((completedLessons / this.lessons.length) * 100);
+        // 진도율을 0-100% 범위로 제한
+        const progressPercent = Math.min(100, Math.max(0, calculatedProgress));
 
         document.getElementById('overall-progress').textContent = progressPercent + '%';
         document.getElementById('overall-progress-bar').style.width = progressPercent + '%';

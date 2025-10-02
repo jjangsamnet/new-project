@@ -685,14 +685,16 @@ class LMSSystem {
             .filter(e => e.userId === this.currentUser.id)
             .forEach(e => {
                 const currentProgress = progressMap.get(e.courseId) || 0;
-                progressMap.set(e.courseId, Math.max(currentProgress, e.progress || 0));
+                // 진도율은 0-100% 사이로 제한
+                const validProgress = Math.min(100, Math.max(0, e.progress || 0));
+                progressMap.set(e.courseId, Math.max(currentProgress, validProgress));
             });
 
         return `
             <div class="my-courses-grid">
                 ${courses.map(course => {
-                    // Map에서 O(1)로 진도율 조회
-                    const progress = progressMap.get(course.id) || 0;
+                    // Map에서 O(1)로 진도율 조회 (0-100% 보장)
+                    const progress = Math.min(100, progressMap.get(course.id) || 0);
 
                     // URL 새니타이즈 적용
                     const sanitizedThumbnail = course.thumbnail && typeof urlSanitizer !== 'undefined'
