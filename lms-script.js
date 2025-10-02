@@ -1287,29 +1287,50 @@ class LMSSystem {
             const enrollmentsUnsubscribe = db.collection('enrollments').onSnapshot((snapshot) => {
                 console.log('🔄 수강신청 데이터 실시간 업데이트 감지');
 
-                const updatedEnrollments = snapshot.docs.map(doc => ({
-                    ...doc.data(),
-                    firebaseId: doc.id
-                }));
+                const updatedEnrollments = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // 진도율을 0-100% 범위로 제한
+                    if (data.progress !== undefined) {
+                        data.progress = Math.min(100, Math.max(0, data.progress || 0));
+                    }
+                    return {
+                        ...data,
+                        firebaseId: doc.id
+                    };
+                });
 
                 console.log('Firebase에서 받은 수강신청:', updatedEnrollments.length, '개');
                 console.log('수강신청 상세:', updatedEnrollments.map(e => ({
                     id: e.id,
                     userId: e.userId,
                     courseId: e.courseId,
+                    progress: e.progress,
                     status: e.status
                 })));
 
-                if (JSON.stringify(this.enrollments) !== JSON.stringify(updatedEnrollments)) {
+                // 데이터 변경 확인 (길이 또는 진도율 변경)
+                const hasChanges = this.enrollments.length !== updatedEnrollments.length ||
+                    updatedEnrollments.some((newE, index) => {
+                        const oldE = this.enrollments.find(e => e.id === newE.id);
+                        return !oldE || oldE.progress !== newE.progress || oldE.status !== newE.status;
+                    });
+
+                if (hasChanges) {
                     console.log('🎓 수강신청 데이터 변경됨 - 이전:', this.enrollments.length, '개 → 현재:', updatedEnrollments.length, '개');
                     this.enrollments = updatedEnrollments;
 
-                    // 내 강좌 페이지가 활성화되어 있다면 새로고침
-                    if (this.currentUser && document.getElementById('my-courses').style.display !== 'none') {
-                        console.log('✅ 내 강좌 페이지 새로고침 중...');
-                        this.loadMyCourses();
-                    } else {
-                        console.log('⏭️ 내 강좌 페이지 비활성 상태 - 새로고침 스킵');
+                    // 현재 사용자가 로그인되어 있으면 항상 내 강좌 UI 업데이트
+                    if (this.currentUser) {
+                        const myCoursesSection = document.getElementById('my-courses');
+                        if (myCoursesSection && myCoursesSection.style.display !== 'none') {
+                            console.log('✅ 내 강좌 페이지 새로고침 중...');
+                            this.loadMyCourses();
+
+                            // 변경 알림 표시
+                            this.showDataUpdateNotification('수강 정보가 업데이트되었습니다.');
+                        } else {
+                            console.log('⏭️ 내 강좌 페이지 비활성 상태 - 다음 방문 시 업데이트됨');
+                        }
                     }
                 }
             }, (error) => {

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진도율 데이터 수정 도구</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .log-item {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #007bff;
+            padding-left: 10px;
+        }
+        .log-item.error { border-color: #dc3545; color: #dc3545; }
+        .log-item.success { border-color: #28a745; color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 진도율 데이터 수정 도구</h1>
+
+        <div class="status info" id="status">
+            Firebase 연결 대기 중...
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>문제:</h3>
+            <ul>
+                <li>일부 사용자의 진도율이 100% 초과 (예: 150%)</li>
+                <li>Firebase에 이미 저장된 잘못된 데이터</li>
+                <li>다른 디바이스에서 여전히 150% 표시</li>
+            </ul>
+
+            <h3>해결:</h3>
+            <ul>
+                <li>Firebase의 모든 enrollment 데이터 검사</li>
+                <li>progress > 100인 데이터를 100으로 수정</li>
+                <li>progress < 0인 데이터를 0으로 수정</li>
+            </ul>
+        </div>
+
+        <button id="scanBtn" onclick="scanData()">1. 데이터 스캔</button>
+        <button id="fixBtn" onclick="fixData()" disabled>2. 데이터 수정</button>
+        <button onclick="location.reload()">새로고침</button>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <!-- Firebase Config -->
+    <script src="firebase-config.local.js"></script>
+
+    <script>
+        let invalidEnrollments = [];
+        let db;
+
+        // Firebase 초기화
+        try {
+            if (typeof firebaseConfigLocal !== 'undefined') {
+                firebase.initializeApp(firebaseConfigLocal);
+                db = firebase.firestore();
+                updateStatus('success', '✅ Firebase 연결 성공!');
+                addLog('success', 'Firebase 초기화 완료');
+            } else {
+                updateStatus('error', '❌ Firebase 설정 파일 없음');
+                addLog('error', 'firebase-config.local.js 파일을 찾을 수 없습니다.');
+            }
+        } catch (error) {
+            updateStatus('error', '❌ Firebase 초기화 실패: ' + error.message);
+            addLog('error', 'Firebase 초기화 오류: ' + error.message);
+        }
+
+        function updateStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = 'status ' + type;
+            status.textContent = message;
+        }
+
+        function addLog(type, message) {
+            const log = document.getElementById('log');
+            const item = document.createElement('div');
+            item.className = 'log-item ' + (type || '');
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(item);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function scanData() {
+            if (!db) {
+                alert('Firebase가 초기화되지 않았습니다.');
+                return;
+            }
+
+            updateStatus('info', '⏳ 데이터 스캔 중...');
+            addLog('', '=== 데이터 스캔 시작 ===');
+
+            try {
+                const snapshot = await db.collection('enrollments').get();
+                addLog('', `총 ${snapshot.size}개의 enrollment 문서 발견`);
+
+                invalidEnrollments = [];
+                let totalChecked = 0;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    totalChecked++;
+
+                    if (data.progress !== undefined && data.progress !== null) {
+                        if (data.progress > 100) {
+                            invalidEnrollments.push({
+                                id: doc.id,
+                                data: data,
+                                oldProgress: data.progress,
+                                newProgress: 100,
+                                issue: 'progress > 100'
+                            });
+                            addLog('error', `❌ ${doc.id}: progress=${data.progress}% (사용자: ${data.userId})`);
+                        } else if (data.progress < 0) {
+                            invalidEnrollments.push({
+                                id: doc.id,
+                                data: data,
+                                oldProgress: data.progress,
+                                newProgress: 0,
+                                issue: 'progress < 0'
+                            });
+                            addLog('error', `❌ ${doc.id}: progress=${data.progress}% (사용자: ${data.userId})`);
+                        }
+                    }
+                });
+
+                addLog('', `검사 완료: ${totalChecked}개 중 ${invalidEnrollments.length}개 문제 발견`);
+
+                if (invalidEnrollments.length > 0) {
+                    updateStatus('error', `⚠️ ${invalidEnrollments.length}개의 잘못된 데이터 발견!`);
+                    document.getElementById('fixBtn').disabled = false;
+                    addLog('', '--- 수정이 필요한 데이터 ---');
+                    invalidEnrollments.forEach(item => {
+                        addLog('', `ID: ${item.id}, ${item.oldProgress}% → ${item.newProgress}%`);
+                    });
+                } else {
+                    updateStatus('success', '✅ 모든 데이터가 정상입니다!');
+                    document.getElementById('fixBtn').disabled = true;
+                }
+
+            } catch (error) {
+                updateStatus('error', '❌ 스캔 실패: ' + error.message);
+                addLog('error', '스캔 오류: ' + error.message);
+            }
+        }
+
+        async function fixData() {
+            if (invalidEnrollments.length === 0) {
+                alert('수정할 데이터가 없습니다. 먼저 스캔을 실행하세요.');
+                return;
+            }
+
+            if (!confirm(`${invalidEnrollments.length}개의 데이터를 수정하시겠습니까?`)) {
+                return;
+            }
+
+            updateStatus('info', '⏳ 데이터 수정 중...');
+            addLog('', '=== 데이터 수정 시작 ===');
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const item of invalidEnrollments) {
+                try {
+                    await db.collection('enrollments').doc(item.id).update({
+                        progress: item.newProgress,
+                        fixedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        fixedBy: 'progress-fix-tool'
+                    });
+
+                    addLog('success', `✅ ${item.id}: ${item.oldProgress}% → ${item.newProgress}% 수정 완료`);
+                    successCount++;
+
+                } catch (error) {
+                    addLog('error', `❌ ${item.id}: 수정 실패 - ${error.message}`);
+                    failCount++;
+                }
+            }
+
+            addLog('', `=== 수정 완료: 성공 ${successCount}개, 실패 ${failCount}개 ===`);
+
+            if (failCount === 0) {
+                updateStatus('success', `✅ 모든 데이터 수정 완료! (${successCount}개)`);
+                invalidEnrollments = [];
+                document.getElementById('fixBtn').disabled = true;
+
+                addLog('success', '다른 디바이스에서 새로고침하면 정상 표시됩니다.');
+            } else {
+                updateStatus('error', `⚠️ ${successCount}개 성공, ${failCount}개 실패`);
+            }
+        }
+    </script>
+</body>
+</html>
