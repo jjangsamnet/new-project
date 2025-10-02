@@ -616,18 +616,26 @@ class LMSSystem {
         }
 
         console.log('🔍 내 강좌 로딩 중...');
-        console.log('현재 사용자 ID:', this.currentUser.id);
-        console.log('현재 사용자 정보:', this.currentUser);
+        console.log('현재 사용자 ID:', this.currentUser.id, '(타입:', typeof this.currentUser.id, ')');
+        console.log('현재 사용자 이메일:', this.currentUser.email);
         console.log('전체 수강신청 수:', this.enrollments.length);
         console.log('전체 수강신청 목록:', this.enrollments.map(e => ({
             enrollmentId: e.id,
             userId: e.userId,
+            userIdType: typeof e.userId,
             courseId: e.courseId,
-            status: e.status
+            status: e.status,
+            matches: String(e.userId) === String(this.currentUser.id)
         })));
 
         // 현재 사용자의 수강신청 목록 가져오기
-        const userEnrollments = this.enrollments.filter(e => e.userId === this.currentUser.id && e.status === 'enrolled');
+        // 타입 차이 대응: 문자열 비교 사용 (Firebase uid는 문자열, localStorage id는 숫자일 수 있음)
+        // status 조건 제거 또는 유연하게 처리 (undefined일 수 있음)
+        const userEnrollments = this.enrollments.filter(e => {
+            const userIdMatch = String(e.userId) === String(this.currentUser.id);
+            const statusOk = !e.status || e.status === 'enrolled' || e.status === 'active';
+            return userIdMatch && statusOk;
+        });
 
         console.log('필터링된 내 수강신청:', userEnrollments.length, '개');
         console.log('매칭 결과:', this.enrollments.map(e => ({
@@ -796,6 +804,21 @@ class LMSSystem {
                 // Rate limiter 성공 기록
                 if (typeof rateLimiter !== 'undefined') {
                     rateLimiter.recordAttempt('login', email, true);
+                }
+
+                // 로그인 후 수강신청 데이터 다시 로드 (Firebase)
+                if (this.isFirebaseReady) {
+                    console.log('🔄 로그인 후 수강신청 데이터 로드 중...');
+                    try {
+                        const enrollmentsResult = await firebaseService.getEnrollments({
+                            limit: 100,
+                            userId: this.currentUser.id
+                        });
+                        this.enrollments = enrollmentsResult.enrollments || enrollmentsResult;
+                        console.log(`✅ ${this.enrollments.length}개의 수강신청 데이터 로드 완료`);
+                    } catch (error) {
+                        console.error('수강신청 데이터 로드 실패:', error);
+                    }
                 }
 
                 this.updateAuthUI();
