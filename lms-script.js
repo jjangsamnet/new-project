@@ -50,6 +50,18 @@ class LMSSystem {
         return Date.now() + '-' + Math.random().toString(36).substring(2, 15);
     }
 
+    // XSS 방지: HTML 이스케이프
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text || '').replace(/[&<>"']/g, (m) => map[m]);
+    }
+
     async loadData() {
         try {
             // Firebase에서 데이터 로드 (페이지네이션 사용)
