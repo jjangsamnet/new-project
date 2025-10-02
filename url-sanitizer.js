@@ -34,9 +34,16 @@ class URLSanitizer {
             return null;
         }
 
-        // 위험한 프로토콜 검사
+        // 위험한 프로토콜 검사 (data: URL은 allowData 옵션에 따라 처리)
         if (this.dangerousProtocols.test(url)) {
-            console.warn('위험한 프로토콜이 감지되었습니다:', url);
+            // data: URL은 이미지/비디오에서 허용될 수 있음
+            if (url.toLowerCase().startsWith('data:') && allowData) {
+                // data: URL 형식 검증 (image, video, audio만 허용)
+                if (/^data:(image|video|audio)\/(jpeg|jpg|png|gif|webp|svg\+xml|mp4|webm|ogg|mpeg|mp3|wav);base64,/i.test(url)) {
+                    return url;
+                }
+            }
+            console.warn('위험한 프로토콜이 감지되었습니다:', url.substring(0, 50) + '...');
             return null;
         }
 
