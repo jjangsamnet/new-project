@@ -689,12 +689,26 @@ class LMSSystem {
         const userEnrollments = this.enrollments.filter(e => String(e.userId) === String(this.currentUser.id));
         console.log('필터링된 내 수강신청:', userEnrollments.length, '개');
 
+        // 중복 제거: 같은 courseId에 대해 가장 최근 수강신청만 사용
+        const courseEnrollmentMap = new Map();
         userEnrollments.forEach(e => {
-            console.log(`📊 수강신청 진도율: courseId=${e.courseId}, progress=${e.progress}, userId=${e.userId}`);
-            const currentProgress = progressMap.get(e.courseId) || 0;
+            const existing = courseEnrollmentMap.get(e.courseId);
+            // enrolledAt 또는 updatedAt 기준으로 가장 최근 것 선택
+            const eDate = new Date(e.updatedAt || e.enrolledAt || 0);
+            const existingDate = existing ? new Date(existing.updatedAt || existing.enrolledAt || 0) : null;
+
+            if (!existing || eDate > existingDate) {
+                courseEnrollmentMap.set(e.courseId, e);
+            }
+        });
+
+        console.log(`🧹 중복 제거: ${userEnrollments.length}개 → ${courseEnrollmentMap.size}개`);
+
+        courseEnrollmentMap.forEach((e, courseId) => {
+            console.log(`📊 수강신청 진도율: courseId=${courseId}, progress=${e.progress}, enrolledAt=${e.enrolledAt}`);
             // 진도율은 0-100% 사이로 제한
             const validProgress = Math.min(100, Math.max(0, e.progress || 0));
-            progressMap.set(e.courseId, Math.max(currentProgress, validProgress));
+            progressMap.set(courseId, validProgress);
         });
 
         console.log('✅ 진도율 Map 완성:', Array.from(progressMap.entries()));
