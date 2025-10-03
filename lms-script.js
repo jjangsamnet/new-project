@@ -1812,6 +1812,32 @@ class LMSSystem {
             if (heroButtonEl) heroButtonEl.textContent = this.settings.heroButton;
         }
 
+        // 히어로 이미지 적용
+        if (this.settings.heroImageUrl) {
+            const heroImageContainer = document.querySelector('.hero-image');
+            if (heroImageContainer) {
+                // 기존 placeholder 제거
+                const placeholder = heroImageContainer.querySelector('.placeholder-image');
+                if (placeholder) {
+                    placeholder.remove();
+                }
+
+                // 이미지 엘리먼트가 없으면 생성
+                let imgEl = heroImageContainer.querySelector('img');
+                if (!imgEl) {
+                    imgEl = document.createElement('img');
+                    imgEl.alt = '히어로 이미지';
+                    imgEl.style.width = '100%';
+                    imgEl.style.height = 'auto';
+                    imgEl.style.borderRadius = '8px';
+                    heroImageContainer.appendChild(imgEl);
+                }
+
+                imgEl.src = this.settings.heroImageUrl;
+                console.log('✅ 히어로 이미지 적용됨');
+            }
+        }
+
         // 연락처 정보 적용
         if (this.settings.contactEmail) {
             const emailElements = document.querySelectorAll('.contact-email, [data-email]');
