@@ -7,27 +7,25 @@
     <link rel="stylesheet" href="course-learning-styles.css?v=20241204030">
     <style>
         /* 비디오 플레이어 강제 스타일 오버라이드 */
-        .video-container {
-            max-height: 60vh !important;
-            overflow: hidden !important;
-        }
-
         .video-player {
             width: 100% !important;
-            padding-bottom: 56.25% !important;
+            height: 500px !important;
             position: relative !important;
             background: #000 !important;
-            height: auto !important;
+            padding-bottom: 0 !important;
         }
 
         #lesson-video,
         .video-player iframe {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: static !important;
+            display: block !important;
             width: 100% !important;
             height: 100% !important;
             object-fit: contain !important;
+        }
+
+        .video-container {
+            background: #000000 !important;
         }
     </style>
 </head>
