@@ -1806,6 +1806,55 @@ class AdminSystem {
         }
     }
 
+    // 히어로 이미지 업로드 처리
+    handleHeroImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // 파일 크기 체크 (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('이미지 파일 크기는 5MB 이하여야 합니다.');
+            event.target.value = '';
+            return;
+        }
+
+        // 이미지 파일 체크
+        if (!file.type.startsWith('image/')) {
+            alert('이미지 파일만 업로드 가능합니다.');
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('hero-image-preview');
+            const previewContainer = document.getElementById('hero-image-preview-container');
+            const hiddenInput = document.getElementById('hero-image-url');
+
+            preview.src = e.target.result;
+            previewContainer.style.display = 'block';
+            hiddenInput.value = e.target.result; // Base64 저장
+
+            console.log('✅ 히어로 이미지 업로드 완료');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // 히어로 이미지 제거
+    removeHeroImage() {
+        const preview = document.getElementById('hero-image-preview');
+        const previewContainer = document.getElementById('hero-image-preview-container');
+        const fileInput = document.getElementById('hero-image-input');
+        const hiddenInput = document.getElementById('hero-image-url');
+
+        preview.src = '';
+        previewContainer.style.display = 'none';
+        fileInput.value = '';
+        hiddenInput.value = '';
+
+        console.log('🗑️ 히어로 이미지 제거됨');
+    }
+
     async saveSettings() {
         console.log('⚙️ 설정 저장 시작...');
         console.log('Firebase 상태:', this.isFirebaseReady);
@@ -1820,6 +1869,7 @@ class AdminSystem {
                 heroTitle: document.getElementById('hero-title').value,
                 heroSubtitle: document.getElementById('hero-subtitle').value,
                 heroButton: document.getElementById('hero-button').value,
+                heroImageUrl: document.getElementById('hero-image-url').value || '',
                 facebookUrl: document.getElementById('facebook-url').value,
                 instagramUrl: document.getElementById('instagram-url').value,
                 youtubeUrl: document.getElementById('youtube-url').value,
@@ -1942,6 +1992,7 @@ class AdminSystem {
                 'hero-title': this.settings.heroTitle || '',
                 'hero-subtitle': this.settings.heroSubtitle || '',
                 'hero-button': this.settings.heroButton || '',
+                'hero-image-url': this.settings.heroImageUrl || '',
                 'facebook-url': this.settings.facebookUrl || '',
                 'instagram-url': this.settings.instagramUrl || '',
                 'youtube-url': this.settings.youtubeUrl || '',
@@ -1958,6 +2009,17 @@ class AdminSystem {
                     console.log(`✅ ${fieldId}: "${value}"`);
                 } else {
                     console.warn(`⚠️ 설정 필드를 찾을 수 없음: ${fieldId}`);
+                }
+            }
+
+            // 히어로 이미지 미리보기 표시
+            if (this.settings.heroImageUrl) {
+                const preview = document.getElementById('hero-image-preview');
+                const previewContainer = document.getElementById('hero-image-preview-container');
+                if (preview && previewContainer) {
+                    preview.src = this.settings.heroImageUrl;
+                    previewContainer.style.display = 'block';
+                    console.log('✅ 히어로 이미지 미리보기 표시됨');
                 }
             }
 

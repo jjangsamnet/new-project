@@ -295,6 +295,21 @@
                             <label>버튼 텍스트</label>
                             <input type="text" id="hero-button" value="강좌 둘러보기">
                         </div>
+                        <div class="form-group">
+                            <label>첫 화면 온라인 학습 이미지</label>
+                            <div class="image-upload-container">
+                                <input type="file" id="hero-image-input" accept="image/*" style="display: none;" onchange="admin.handleHeroImageUpload(event)">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('hero-image-input').click()">이미지 선택</button>
+                                <div id="hero-image-preview-container" style="margin-top: 10px; display: none;">
+                                    <img id="hero-image-preview" src="" alt="히어로 이미지 미리보기" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <div style="margin-top: 10px;">
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="admin.removeHeroImage()">이미지 제거</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="hero-image-url" value="">
+                                <p style="font-size: 12px; color: #666; margin-top: 5px;">권장 크기: 1920x1080px, 최대 5MB</p>
+                            </div>
+                        </div>
                     </form>
                 </div>
 
