@@ -573,12 +573,18 @@ element.classList.toggle('toggle-class');</code></pre>
 
                     // 기존 video 요소 숨기고 iframe 추가
                     lessonVideo.style.display = 'none';
+
+                    // video-player에 직접 스타일 적용
+                    const videoPlayer = document.getElementById('video-player');
+                    videoPlayer.style.width = '100%';
+                    videoPlayer.style.height = '500px';
+                    videoPlayer.style.position = 'relative';
+                    videoPlayer.style.paddingBottom = '0';
+
                     videoPlaceholder.innerHTML = '';
-                    videoPlaceholder.style.position = 'relative';
-                    videoPlaceholder.style.paddingBottom = '56.25%'; // 16:9 비율
-                    videoPlaceholder.style.height = '0';
-                    videoPlaceholder.style.width = '100%'; // flex 컨테이너 내에서 너비 보장
-                    videoPlaceholder.style.flex = '1'; // flex 아이템으로 공간 차지
+                    videoPlaceholder.style.position = 'static';
+                    videoPlaceholder.style.width = '100%';
+                    videoPlaceholder.style.height = '100%';
                     videoPlaceholder.appendChild(iframe);
                     videoPlaceholder.style.display = 'block';
                 } else {
