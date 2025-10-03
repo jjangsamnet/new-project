@@ -7,12 +7,17 @@
     <link rel="stylesheet" href="course-learning-styles.css?v=20241204030">
     <style>
         /* 비디오 플레이어 강제 스타일 오버라이드 */
+        .video-container {
+            max-height: 60vh !important;
+            overflow: hidden !important;
+        }
+
         .video-player {
             width: 100% !important;
-            height: 0 !important;
             padding-bottom: 56.25% !important;
             position: relative !important;
             background: #000 !important;
+            height: auto !important;
         }
 
         #lesson-video,
@@ -22,6 +27,7 @@
             left: 0 !important;
             width: 100% !important;
             height: 100% !important;
+            object-fit: contain !important;
         }
     </style>
 </head>
