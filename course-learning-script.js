@@ -744,10 +744,17 @@ element.classList.toggle('toggle-class');</code></pre>
         // Firebase enrollment에도 진도율 업데이트 (실시간 동기화)
         if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
             try {
-                const enrollments = await firebaseService.getEnrollments();
+                // getAllEnrollments()는 배열을 반환
+                const enrollments = await firebaseService.getAllEnrollments();
+
+                if (!Array.isArray(enrollments)) {
+                    console.warn('⚠️ enrollments가 배열이 아님:', typeof enrollments);
+                    return;
+                }
+
                 const enrollment = enrollments.find(e =>
-                    e.userId === this.currentUser.id &&
-                    e.courseId === this.currentCourse.id
+                    String(e.userId) === String(this.currentUser.id) &&
+                    String(e.courseId) === String(this.currentCourse.id)
                 );
 
                 if (enrollment && enrollment.firebaseId) {
@@ -757,7 +764,10 @@ element.classList.toggle('toggle-class');</code></pre>
                         console.log('✅ Firebase 진도율 실시간 동기화:', progressPercent, '%');
                     }
                 } else {
-                    console.warn('⚠️ Firebase enrollment 찾을 수 없음 또는 firebaseId 없음');
+                    console.warn('⚠️ Firebase enrollment 찾을 수 없음');
+                    console.log('현재 사용자 ID:', this.currentUser.id);
+                    console.log('현재 강좌 ID:', this.currentCourse.id);
+                    console.log('전체 enrollments 수:', enrollments.length);
                 }
             } catch (error) {
                 console.warn('⚠️ Firebase 진도율 동기화 실패:', error);
