@@ -1848,66 +1848,90 @@ class AdminSystem {
             return;
         }
 
-        // Firebase Storage에 업로드 시도
-        if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
-            try {
-                console.log('☁️ Firebase Storage에 업로드 중...');
-                console.log('firebaseService 존재:', typeof firebaseService);
-                console.log('uploadHeroImage 함수 존재:', typeof firebaseService.uploadHeroImage);
-                console.log('storage 객체 존재:', typeof storage);
-
-                if (typeof showLoading !== 'undefined') {
-                    showLoading();
-                }
-
-                const uploadResult = await firebaseService.uploadHeroImage(file);
-                console.log('📥 업로드 결과:', uploadResult);
-
-                if (typeof hideLoading !== 'undefined') {
-                    hideLoading();
-                }
-
-                if (uploadResult.success) {
-                    console.log('✅ Firebase Storage 업로드 성공:', uploadResult.url);
-
-                    preview.src = uploadResult.url;
-                    previewContainer.style.display = 'block';
-                    hiddenInput.value = uploadResult.url;
-
-                    alert('이미지가 성공적으로 업로드되었습니다.');
-                    return;
-                } else {
-                    console.warn('⚠️ Firebase Storage 업로드 실패, Base64로 폴백:', uploadResult.error);
-                    alert('Firebase Storage 업로드 실패. Base64 방식으로 저장합니다.\n오류: ' + uploadResult.error);
-                }
-            } catch (error) {
-                console.error('❌ Firebase Storage 업로드 오류:', error);
-                console.error('오류 상세:', error.message, error.stack);
-
-                if (typeof hideLoading !== 'undefined') {
-                    hideLoading();
-                }
-
-                alert('Firebase Storage 업로드 중 오류가 발생했습니다.\nBase64 방식으로 저장합니다.\n\n오류: ' + error.message);
-            }
+        if (typeof showLoading !== 'undefined') {
+            showLoading();
         }
 
-        // Firebase 실패 시 Base64로 폴백 (localStorage 전용)
-        console.log('📦 Base64 인코딩으로 폴백...');
+        // 이미지를 압축하여 Firestore 크기 제한 내로 만들기
+        console.log('🖼️ 이미지 압축 시작...');
+        const img = new Image();
+        img.onload = () => {
+            try {
+                // Canvas로 이미지 크기 조정
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // 최대 크기 설정 (1920x1080)
+                const maxWidth = 1920;
+                const maxHeight = 1080;
+
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.floor(width * ratio);
+                    height = Math.floor(height * ratio);
+                    console.log(`📐 이미지 크기 조정: ${img.width}x${img.height} → ${width}x${height}`);
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 압축된 이미지를 Base64로 변환 (품질: 0.7)
+                let quality = 0.7;
+                let compressedData = canvas.toDataURL('image/jpeg', quality);
+
+                // Firestore 제한(1MB) 보다 작아질 때까지 압축
+                const maxSize = 900000; // 900KB (안전 마진)
+                while (compressedData.length > maxSize && quality > 0.1) {
+                    quality -= 0.1;
+                    compressedData = canvas.toDataURL('image/jpeg', quality);
+                    console.log(`🔄 재압축 중... 품질: ${quality.toFixed(1)}, 크기: ${(compressedData.length / 1024).toFixed(0)}KB`);
+                }
+
+                console.log(`✅ 최종 이미지: 크기 ${(compressedData.length / 1024).toFixed(0)}KB, 품질 ${quality.toFixed(1)}`);
+
+                // 미리보기 및 저장
+                preview.src = compressedData;
+                previewContainer.style.display = 'block';
+                hiddenInput.value = compressedData;
+
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
+
+                alert(`이미지가 업로드되었습니다.\n\n크기: ${width}x${height}\n용량: ${(compressedData.length / 1024).toFixed(0)}KB`);
+            } catch (error) {
+                console.error('❌ 이미지 처리 오류:', error);
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
+                alert('이미지 처리 중 오류가 발생했습니다: ' + error.message);
+            }
+        };
+
+        img.onerror = (error) => {
+            console.error('❌ 이미지 로드 오류:', error);
+            if (typeof hideLoading !== 'undefined') {
+                hideLoading();
+            }
+            alert('이미지 로드 중 오류가 발생했습니다.');
+        };
+
+        // FileReader로 이미지 데이터 읽기
         const reader = new FileReader();
         reader.onload = (e) => {
-            preview.src = e.target.result;
-            previewContainer.style.display = 'block';
-            hiddenInput.value = e.target.result;
-            console.log('✅ Base64 이미지 저장 완료 (localStorage 전용)');
-            alert('이미지가 업로드되었습니다.\n\n⚠️ 주의: Base64 형식은 Firebase에 저장되지 않으며, localStorage에만 저장됩니다.');
+            img.src = e.target.result;
         };
-
         reader.onerror = (error) => {
             console.error('❌ FileReader 오류:', error);
-            alert('이미지 읽기 중 오류가 발생했습니다.');
+            if (typeof hideLoading !== 'undefined') {
+                hideLoading();
+            }
+            alert('파일 읽기 중 오류가 발생했습니다.');
         };
-
         reader.readAsDataURL(file);
     }
 
