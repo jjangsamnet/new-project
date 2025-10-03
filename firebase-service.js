@@ -616,6 +616,38 @@ class FirebaseService {
 
         return { success: true, user: userWithoutPassword };
     }
+
+    // 사용자 삭제
+    async deleteUser(firebaseId) {
+        if (!this.isFirebaseReady) {
+            return this.fallbackToLocal('deleteUser', arguments);
+        }
+
+        try {
+            await db.collection(this.collections.users).doc(firebaseId).delete();
+            console.log('✅ Firebase 사용자 삭제 성공:', firebaseId);
+            return { success: true };
+        } catch (error) {
+            console.error('사용자 삭제 오류:', error);
+            throw error;
+        }
+    }
+
+    // 수강신청 삭제
+    async deleteEnrollment(firebaseId) {
+        if (!this.isFirebaseReady) {
+            return this.fallbackToLocal('deleteEnrollment', arguments);
+        }
+
+        try {
+            await db.collection(this.collections.enrollments).doc(firebaseId).delete();
+            console.log('✅ Firebase 수강신청 삭제 성공:', firebaseId);
+            return { success: true };
+        } catch (error) {
+            console.error('수강신청 삭제 오류:', error);
+            throw error;
+        }
+    }
 }
 
 // 전역 Firebase 서비스 인스턴스
