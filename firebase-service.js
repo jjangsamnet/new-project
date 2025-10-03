@@ -649,6 +649,29 @@ class FirebaseService {
         }
     }
 
+    // 수강신청 진도율 업데이트
+    async updateEnrollmentProgress(firebaseId, progress) {
+        if (!this.isFirebaseReady) {
+            console.warn('⚠️ Firebase 비활성화 - 진도율 업데이트 불가');
+            return { success: false, error: 'Firebase not ready' };
+        }
+
+        try {
+            const progressNum = Math.min(100, Math.max(0, parseInt(progress) || 0));
+
+            await db.collection(this.collections.enrollments).doc(firebaseId).update({
+                progress: progressNum,
+                updatedAt: new Date().toISOString()
+            });
+
+            console.log('✅ Firebase 진도율 업데이트 성공:', firebaseId, progressNum + '%');
+            return { success: true, progress: progressNum };
+        } catch (error) {
+            console.error('❌ 진도율 업데이트 오류:', error);
+            throw error;
+        }
+    }
+
     // 히어로 이미지를 Firebase Storage에 업로드
     async uploadHeroImage(file) {
         if (!this.isFirebaseReady) {

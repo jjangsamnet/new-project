@@ -1728,24 +1728,52 @@ class AdminSystem {
         alert('사용자 상태가 변경되었습니다.');
     }
 
-    updateProgress(enrollmentId) {
+    async updateProgress(enrollmentId) {
         const enrollment = this.enrollments.find(e => e.id === enrollmentId);
-        if (enrollment) {
-            const currentProgress = enrollment.progress || 0;
-            const newProgress = prompt(`진도율을 입력하세요 (0-100%):\n현재 진도율: ${currentProgress}%`, currentProgress);
+        if (!enrollment) {
+            alert('수강신청을 찾을 수 없습니다.');
+            return;
+        }
 
-            if (newProgress !== null) {
-                const progressNum = parseInt(newProgress);
-                if (isNaN(progressNum) || progressNum < 0 || progressNum > 100) {
-                    alert('0에서 100 사이의 숫자를 입력해주세요.');
-                    return;
-                }
+        const user = this.users.find(u => u.id === enrollment.userId);
+        const course = this.courses.find(c => c.id === enrollment.courseId);
 
-                enrollment.progress = progressNum;
-                this.saveData();
-                this.loadEnrollments();
-                alert('진도율이 업데이트되었습니다.');
+        const currentProgress = enrollment.progress || 0;
+        const newProgress = prompt(
+            `[${user?.name || '알 수 없음'}] ${course?.title || '알 수 없음'}\n\n진도율을 입력하세요 (0-100%):\n현재 진도율: ${currentProgress}%`,
+            currentProgress
+        );
+
+        if (newProgress === null) return; // 취소
+
+        const progressNum = parseInt(newProgress);
+        if (isNaN(progressNum) || progressNum < 0 || progressNum > 100) {
+            alert('0에서 100 사이의 숫자를 입력해주세요.');
+            return;
+        }
+
+        try {
+            showLoading();
+
+            // Firebase에 업데이트
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined' && enrollment.firebaseId) {
+                console.log('🔥 Firebase 진도율 업데이트:', enrollment.firebaseId, progressNum);
+                await firebaseService.updateEnrollmentProgress(enrollment.firebaseId, progressNum);
+                console.log('✅ Firebase 진도율 업데이트 성공');
             }
+
+            // 로컬 데이터 업데이트
+            enrollment.progress = progressNum;
+            this.saveData();
+            this.loadEnrollments();
+            this.loadCompletions();
+
+            hideLoading();
+            alert(`진도율이 ${progressNum}%로 업데이트되었습니다.`);
+        } catch (error) {
+            console.error('진도율 업데이트 오류:', error);
+            hideLoading();
+            alert('진도율 업데이트 중 오류가 발생했습니다: ' + error.message);
         }
     }
 
