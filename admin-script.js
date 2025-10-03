@@ -152,7 +152,41 @@ class AdminSystem {
     }
 
     async checkAuthStatus() {
-        // Firebase Authentication 상태 확인 (우회 불가능)
+        // localStorage 세션 확인 (개발 모드 인증)
+        const authStatus = sessionStorage.getItem('admin_authenticated');
+        const userId = sessionStorage.getItem('admin_user_id');
+        const authToken = sessionStorage.getItem('admin_auth_token');
+        const authTimestamp = sessionStorage.getItem('admin_auth_timestamp');
+
+        // localStorage 인증 세션이 있는 경우
+        if (authStatus === 'true' && userId && authToken && authTimestamp) {
+            const now = Date.now();
+
+            // 타임스탬프 검증 (1시간 유효)
+            if ((now - parseInt(authTimestamp)) >= 3600000) {
+                console.warn('⚠️ 세션 만료 (1시간 경과)');
+                this.isAuthenticated = false;
+                sessionStorage.clear();
+                return;
+            }
+
+            // 토큰 검증 (저장된 해시와 비교)
+            const expectedToken = await this.generateAuthToken(userId, authTimestamp);
+            if (authToken !== expectedToken) {
+                console.error('❌ 인증 토큰 불일치 - 조작 감지');
+                this.isAuthenticated = false;
+                sessionStorage.clear();
+                alert('인증 정보가 올바르지 않습니다. 다시 로그인해주세요.');
+                return;
+            }
+
+            // localStorage 인증 성공
+            this.isAuthenticated = true;
+            console.log('✅ localStorage 세션 인증 성공');
+            return;
+        }
+
+        // Firebase Authentication 상태 확인 (Firebase 로그인인 경우)
         if (this.isFirebaseReady) {
             const currentUser = await firebaseService.getCurrentUser();
 
@@ -174,41 +208,9 @@ class AdminSystem {
                     this.isAuthenticated = true;
                     this.currentUser = currentUser;
                     sessionStorage.setItem('admin_user_id', currentUser.id);
+                    console.log('✅ Firebase 세션 인증 성공');
                     return;
                 }
-            }
-        } else {
-            // Firebase 없을 때: localStorage 폴백 (개발 전용)
-            // ⚠️ 보안 경고: localStorage 모드는 개발 환경에만 사용
-            const authStatus = sessionStorage.getItem('admin_authenticated');
-            const userId = sessionStorage.getItem('admin_user_id');
-            const authToken = sessionStorage.getItem('admin_auth_token');
-            const authTimestamp = sessionStorage.getItem('admin_auth_timestamp');
-
-            // 모든 인증 정보가 있어야 함
-            if (authStatus === 'true' && userId && authToken && authTimestamp) {
-                const now = Date.now();
-
-                // 타임스탬프 검증 (1시간 유효)
-                if ((now - parseInt(authTimestamp)) >= 3600000) {
-                    console.warn('⚠️ 세션 만료 (1시간 경과)');
-                    this.isAuthenticated = false;
-                    sessionStorage.clear();
-                    return;
-                }
-
-                // 토큰 검증 (저장된 해시와 비교)
-                const expectedToken = await this.generateAuthToken(userId, authTimestamp);
-                if (authToken !== expectedToken) {
-                    console.error('❌ 인증 토큰 불일치 - 조작 감지');
-                    this.isAuthenticated = false;
-                    sessionStorage.clear();
-                    alert('인증 정보가 올바르지 않습니다. 다시 로그인해주세요.');
-                    return;
-                }
-
-                this.isAuthenticated = true;
-                return;
             }
         }
 
