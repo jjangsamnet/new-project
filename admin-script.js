@@ -2325,7 +2325,6 @@ document.addEventListener('visibilitychange', () => {
     };
 
     console.log('🔧 관리자 디버그 도구가 추가되었습니다. adminDebug 객체를 사용하세요.');
-});
 
 // 윈도우 리사이즈 이벤트
 window.addEventListener('resize', () => {
