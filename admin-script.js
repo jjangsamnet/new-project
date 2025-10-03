@@ -271,55 +271,52 @@ class AdminSystem {
                 }
             }
 
-            // Firebase Authentication을 사용한 서버 측 인증
-            if (this.isFirebaseReady) {
-                // Firebase Authentication으로 로그인
+            // Firebase Authentication 시도 (이메일 형식인 경우)
+            let firebaseLoginAttempted = false;
+            if (this.isFirebaseReady && username.includes('@')) {
+                firebaseLoginAttempted = true;
+                console.log('🔐 Firebase Authentication 시도...');
+
                 const result = await firebaseService.signIn(username, password);
 
-                if (!result.success) {
-                    errorDiv.textContent = result.error || '로그인에 실패했습니다.';
-                    errorDiv.style.display = 'block';
-                    return;
+                if (result.success) {
+                    // Firestore에서 관리자 역할 확인
+                    const isAdmin = await this.checkAdminRole(result.user.id);
+
+                    if (!isAdmin) {
+                        // 관리자가 아닌 경우 로그아웃
+                        await firebaseService.signOut();
+                        errorDiv.textContent = '관리자 권한이 없습니다.';
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+
+                    // 로그인 성공
+                    this.isAuthenticated = true;
+                    this.currentUser = result.user;
+                    sessionStorage.setItem('admin_user_id', result.user.id);
+                    sessionStorage.setItem('admin_auth_timestamp', Date.now().toString());
+
+                    // Firebase ID Token 저장 (추가 검증용)
+                    const idToken = await firebase.auth().currentUser.getIdToken();
+                    sessionStorage.setItem('admin_id_token', idToken);
+
+                    // Rate limiter 성공 기록
+                    if (typeof rateLimiter !== 'undefined') {
+                        rateLimiter.recordAttempt('login', username, true);
+                    }
+
+                    this.showAdminDashboard();
+                    errorDiv.style.display = 'none';
+                    return; // 성공하면 여기서 종료
+                } else {
+                    console.warn('⚠️ Firebase 로그인 실패, localStorage 폴백 시도:', result.error);
                 }
+            }
 
-                // Firestore에서 관리자 역할 확인
-                const isAdmin = await this.checkAdminRole(result.user.id);
-
-                if (!isAdmin) {
-                    // 관리자가 아닌 경우 로그아웃
-                    await firebaseService.signOut();
-                    errorDiv.textContent = '관리자 권한이 없습니다.';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-
-                // 로그인 성공
-                this.isAuthenticated = true;
-                this.currentUser = result.user;
-                sessionStorage.setItem('admin_user_id', result.user.id);
-                sessionStorage.setItem('admin_auth_timestamp', Date.now().toString());
-
-                // Firebase ID Token 저장 (추가 검증용)
-                const idToken = await firebase.auth().currentUser.getIdToken();
-                sessionStorage.setItem('admin_id_token', idToken);
-
-                // Rate limiter 성공 기록
-                if (typeof rateLimiter !== 'undefined') {
-                    rateLimiter.recordAttempt('login', username, true);
-                }
-
-                this.showAdminDashboard();
-                errorDiv.style.display = 'none';
-
-            } else {
-                // Firebase 없을 때: localStorage 폴백 (개발 환경만)
-                console.warn('⚠️ Firebase 미사용 - localStorage 인증 사용 (개발 전용)');
-
-                if (!this.adminCredentials) {
-                    errorDiv.textContent = '관리자 인증 설정이 올바르지 않습니다.';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
+            // localStorage 폴백 인증 (개발 환경 또는 Firebase 실패 시)
+            if (this.adminCredentials) {
+                console.warn('🔑 localStorage 인증 사용 (개발 전용)');
 
                 // 비밀번호 해싱 검증
                 let isPasswordValid = false;
@@ -358,6 +355,10 @@ class AdminSystem {
                     errorDiv.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
                     errorDiv.style.display = 'block';
                 }
+            } else {
+                // adminCredentials도 없으면 로그인 불가
+                errorDiv.textContent = '관리자 인증 설정이 없습니다. Firebase Authentication 또는 admin-config.local.js가 필요합니다.';
+                errorDiv.style.display = 'block';
             }
 
         } catch (error) {
