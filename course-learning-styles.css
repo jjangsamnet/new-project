@@ -243,35 +243,38 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* 비디오 컨테이너 */
 .video-container {
     background: #000000;
-    position: relative;
+    position: sticky;
+    top: 0;
     width: 100%;
+    z-index: 10;
     flex-shrink: 0;
 }
 
 .video-player {
     width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: calc(100vh - 70px - 80px - 150px); /* 화면 높이 - 헤더 - 컨트롤 - 여유공간 */
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 비율 */
     position: relative;
     background: #000;
     overflow: hidden;
 }
 
-@media (max-height: 800px) {
+@media (max-width: 1600px) {
     .video-player {
-        max-height: calc(100vh - 70px - 80px - 100px);
+        padding-bottom: 50%;
     }
 }
 
-@media (min-height: 1000px) {
+@media (max-width: 1200px) {
     .video-player {
-        max-height: 700px;
+        padding-bottom: 45%;
     }
 }
 
@@ -376,9 +379,6 @@ body {
 .current-lesson-info {
     padding: 20px;
     border-bottom: 1px solid #404040;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 .lesson-header {
