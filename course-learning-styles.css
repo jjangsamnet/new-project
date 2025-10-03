@@ -139,7 +139,8 @@ body {
 .learning-main {
     display: flex;
     margin-top: 70px;
-    min-height: calc(100vh - 70px);
+    height: calc(100vh - 70px);
+    overflow: hidden;
 }
 
 /* 사이드바 */
@@ -255,8 +256,8 @@ body {
 
 .video-player {
     width: 100%;
-    height: 0;
-    padding-bottom: 56.25%; /* 16:9 비율 */
+    aspect-ratio: 16 / 9;
+    max-height: calc(100vh - 70px - 80px - 200px); /* 화면 높이 - 헤더 - 컨트롤 - 여유공간 */
     position: relative;
     background: #000;
     overflow: hidden;
@@ -264,14 +265,13 @@ body {
 
 @media (max-height: 800px) {
     .video-player {
-        padding-bottom: 50%; /* 작은 화면에서는 더 낮은 비율 */
+        max-height: calc(100vh - 70px - 80px - 100px);
     }
 }
 
 @media (min-height: 1000px) {
     .video-player {
-        padding-bottom: 60%; /* 큰 화면에서는 더 높은 비율 */
-        max-height: 800px;
+        max-height: 700px;
     }
 }
 
