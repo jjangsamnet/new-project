@@ -681,20 +681,30 @@ class LMSSystem {
     renderMyCoursesGrid(courses) {
         // 성능 최적화: 진도율 Map 미리 계산
         const progressMap = new Map();
-        this.enrollments
-            .filter(e => e.userId === this.currentUser.id)
-            .forEach(e => {
-                const currentProgress = progressMap.get(e.courseId) || 0;
-                // 진도율은 0-100% 사이로 제한
-                const validProgress = Math.min(100, Math.max(0, e.progress || 0));
-                progressMap.set(e.courseId, Math.max(currentProgress, validProgress));
-            });
+
+        console.log('🎨 진도율 Map 생성 시작...');
+        console.log('현재 사용자 ID:', this.currentUser.id, '(타입:', typeof this.currentUser.id, ')');
+        console.log('전체 수강신청:', this.enrollments.length, '개');
+
+        const userEnrollments = this.enrollments.filter(e => String(e.userId) === String(this.currentUser.id));
+        console.log('필터링된 내 수강신청:', userEnrollments.length, '개');
+
+        userEnrollments.forEach(e => {
+            console.log(`📊 수강신청 진도율: courseId=${e.courseId}, progress=${e.progress}, userId=${e.userId}`);
+            const currentProgress = progressMap.get(e.courseId) || 0;
+            // 진도율은 0-100% 사이로 제한
+            const validProgress = Math.min(100, Math.max(0, e.progress || 0));
+            progressMap.set(e.courseId, Math.max(currentProgress, validProgress));
+        });
+
+        console.log('✅ 진도율 Map 완성:', Array.from(progressMap.entries()));
 
         return `
             <div class="my-courses-grid">
                 ${courses.map(course => {
                     // Map에서 O(1)로 진도율 조회 (0-100% 보장)
                     const progress = Math.min(100, progressMap.get(course.id) || 0);
+                    console.log(`🎯 강좌 "${course.title}" (ID: ${course.id}) 진도율: ${progress}%`);
 
                     // URL 새니타이즈 적용
                     const sanitizedThumbnail = course.thumbnail && typeof urlSanitizer !== 'undefined'
