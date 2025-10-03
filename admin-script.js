@@ -839,8 +839,8 @@ class AdminSystem {
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-warning" onclick="admin.toggleUserStatus(${user.id})">상태변경</button>
-                            <button class="btn btn-sm btn-danger" onclick="admin.deleteUser(${user.id})">삭제</button>
+                            <button class="btn btn-sm btn-warning" onclick="admin.toggleUserStatus('${user.id}')">상태변경</button>
+                            <button class="btn btn-sm btn-danger" onclick="admin.deleteUser('${user.id}')">삭제</button>
                         </div>
                     </td>
                 </tr>
@@ -1181,8 +1181,8 @@ class AdminSystem {
                     <td><span class="status-badge status-active">활성</span></td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-warning" onclick="admin.toggleUserStatus(${user.id})">상태변경</button>
-                            <button class="btn btn-sm btn-danger" onclick="admin.deleteUser(${user.id})">삭제</button>
+                            <button class="btn btn-sm btn-warning" onclick="admin.toggleUserStatus('${user.id}')">상태변경</button>
+                            <button class="btn btn-sm btn-danger" onclick="admin.deleteUser('${user.id}')">삭제</button>
                         </div>
                     </td>
                 </tr>
@@ -1667,16 +1667,60 @@ class AdminSystem {
         }
     }
 
-    deleteUser(userId) {
-        if (confirm('이 사용자를 삭제하시겠습니까?')) {
+    async deleteUser(userId) {
+        if (!confirm('이 사용자를 삭제하시겠습니까?\n\n관련된 모든 수강신청도 함께 삭제됩니다.')) {
+            return;
+        }
+
+        try {
+            if (typeof showLoading !== 'undefined') {
+                showLoading();
+            }
+
+            // 관련 수강신청 찾기
+            const relatedEnrollments = this.enrollments.filter(e => e.userId === userId);
+
+            // Firebase에서 삭제
+            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+                // 사용자 삭제
+                const user = this.users.find(u => u.id === userId);
+                if (user && user.firebaseId) {
+                    await firebaseService.deleteUser(user.firebaseId);
+                    console.log('✅ Firebase 사용자 삭제 성공');
+                }
+
+                // 관련 수강신청 삭제
+                for (const enrollment of relatedEnrollments) {
+                    if (enrollment.firebaseId) {
+                        await firebaseService.deleteEnrollment(enrollment.firebaseId);
+                    }
+                }
+                console.log(`✅ Firebase 수강신청 ${relatedEnrollments.length}개 삭제 성공`);
+            }
+
+            // 로컬 배열에서 삭제
             this.users = this.users.filter(u => u.id !== userId);
             this.enrollments = this.enrollments.filter(e => e.userId !== userId);
+
+            // localStorage 백업
             this.saveData();
             this.loadUsers();
             this.loadEnrollments();
             this.loadCompletions();
             this.updateStats();
-            alert('사용자가 삭제되었습니다.');
+
+            if (typeof hideLoading !== 'undefined') {
+                hideLoading();
+            }
+
+            alert(`사용자가 삭제되었습니다.${relatedEnrollments.length > 0 ? `\n${relatedEnrollments.length}개의 수강신청도 함께 삭제되었습니다.` : ''}`);
+
+        } catch (error) {
+            console.error('사용자 삭제 오류:', error);
+            if (typeof hideLoading !== 'undefined') {
+                hideLoading();
+            }
+            alert('사용자 삭제 중 오류가 발생했습니다: ' + error.message);
         }
     }
 
