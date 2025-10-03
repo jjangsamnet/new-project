@@ -243,8 +243,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 /* 비디오 컨테이너 */
@@ -252,12 +251,13 @@ body {
     background: #000000;
     position: relative;
     width: 100%;
+    flex-shrink: 0;
 }
 
 .video-player {
     width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: calc(100vh - 70px - 80px - 200px); /* 화면 높이 - 헤더 - 컨트롤 - 여유공간 */
+    max-height: calc(100vh - 70px - 80px - 150px); /* 화면 높이 - 헤더 - 컨트롤 - 여유공간 */
     position: relative;
     background: #000;
     overflow: hidden;
@@ -376,6 +376,9 @@ body {
 .current-lesson-info {
     padding: 20px;
     border-bottom: 1px solid #404040;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .lesson-header {
