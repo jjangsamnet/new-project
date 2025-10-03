@@ -1807,7 +1807,7 @@ class AdminSystem {
     }
 
     // 히어로 이미지 업로드 처리
-    handleHeroImageUpload(event) {
+    async handleHeroImageUpload(event) {
         console.log('📸 이미지 업로드 시작...');
         const file = event.target.files[0];
         if (!file) {
@@ -1837,29 +1837,55 @@ class AdminSystem {
             return;
         }
 
-        console.log('✅ 파일 검증 통과, Base64 인코딩 시작...');
+        console.log('✅ 파일 검증 통과');
 
+        const preview = document.getElementById('hero-image-preview');
+        const previewContainer = document.getElementById('hero-image-preview-container');
+        const hiddenInput = document.getElementById('hero-image-url');
+
+        if (!preview || !previewContainer || !hiddenInput) {
+            console.error('❌ DOM 요소를 찾을 수 없음');
+            return;
+        }
+
+        // Firebase Storage에 업로드 시도
+        if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+            try {
+                console.log('☁️ Firebase Storage에 업로드 중...');
+                showLoading();
+
+                const uploadResult = await firebaseService.uploadHeroImage(file);
+
+                if (uploadResult.success) {
+                    console.log('✅ Firebase Storage 업로드 성공:', uploadResult.url);
+
+                    preview.src = uploadResult.url;
+                    previewContainer.style.display = 'block';
+                    hiddenInput.value = uploadResult.url;
+
+                    hideLoading();
+                    alert('이미지가 성공적으로 업로드되었습니다.');
+                    return;
+                } else {
+                    console.warn('⚠️ Firebase Storage 업로드 실패, Base64로 폴백:', uploadResult.error);
+                }
+
+                hideLoading();
+            } catch (error) {
+                console.error('❌ Firebase Storage 업로드 오류:', error);
+                hideLoading();
+            }
+        }
+
+        // Firebase 실패 시 Base64로 폴백 (localStorage 전용)
+        console.log('📦 Base64 인코딩으로 폴백...');
         const reader = new FileReader();
         reader.onload = (e) => {
-            console.log('✅ FileReader 로드 완료');
-            const preview = document.getElementById('hero-image-preview');
-            const previewContainer = document.getElementById('hero-image-preview-container');
-            const hiddenInput = document.getElementById('hero-image-url');
-
-            if (!preview || !previewContainer || !hiddenInput) {
-                console.error('❌ DOM 요소를 찾을 수 없음:', {
-                    preview: !!preview,
-                    previewContainer: !!previewContainer,
-                    hiddenInput: !!hiddenInput
-                });
-                return;
-            }
-
             preview.src = e.target.result;
             previewContainer.style.display = 'block';
-            hiddenInput.value = e.target.result; // Base64 저장
-
-            console.log('✅ 히어로 이미지 업로드 완료, Base64 길이:', e.target.result.length);
+            hiddenInput.value = e.target.result;
+            console.log('✅ Base64 이미지 저장 완료 (localStorage 전용)');
+            alert('이미지가 업로드되었습니다.\n\n⚠️ 주의: Base64 형식은 Firebase에 저장되지 않으며, localStorage에만 저장됩니다.');
         };
 
         reader.onerror = (error) => {
@@ -1871,11 +1897,24 @@ class AdminSystem {
     }
 
     // 히어로 이미지 제거
-    removeHeroImage() {
+    async removeHeroImage() {
+        const hiddenInput = document.getElementById('hero-image-url');
+        const currentImageUrl = hiddenInput.value;
+
+        // Firebase Storage에서 이미지 삭제 시도
+        if (currentImageUrl && currentImageUrl.includes('firebase') && this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+            try {
+                console.log('🗑️ Firebase Storage에서 이미지 삭제 중...');
+                await firebaseService.deleteHeroImage(currentImageUrl);
+            } catch (error) {
+                console.error('❌ Firebase Storage 이미지 삭제 오류:', error);
+            }
+        }
+
+        // UI 초기화
         const preview = document.getElementById('hero-image-preview');
         const previewContainer = document.getElementById('hero-image-preview-container');
         const fileInput = document.getElementById('hero-image-input');
-        const hiddenInput = document.getElementById('hero-image-url');
 
         preview.src = '';
         previewContainer.style.display = 'none';

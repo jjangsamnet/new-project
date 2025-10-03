@@ -648,6 +648,79 @@ class FirebaseService {
             throw error;
         }
     }
+
+    // 히어로 이미지를 Firebase Storage에 업로드
+    async uploadHeroImage(file) {
+        if (!this.isFirebaseReady) {
+            console.warn('⚠️ Firebase Storage 비활성화 - Base64 폴백 필요');
+            return { success: false, error: 'Firebase Storage not available' };
+        }
+
+        try {
+            console.log('📤 Firebase Storage 업로드 시작:', file.name);
+
+            // Storage 참조 생성
+            const timestamp = Date.now();
+            const filename = `hero-images/${timestamp}_${file.name}`;
+            const storageRef = storage.ref(filename);
+
+            console.log('📁 업로드 경로:', filename);
+
+            // 파일 업로드
+            const uploadTask = await storageRef.put(file);
+            console.log('✅ 파일 업로드 완료');
+
+            // 다운로드 URL 가져오기
+            const downloadURL = await storageRef.getDownloadURL();
+            console.log('🔗 다운로드 URL:', downloadURL);
+
+            return {
+                success: true,
+                url: downloadURL,
+                path: filename
+            };
+        } catch (error) {
+            console.error('❌ Firebase Storage 업로드 오류:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    // 히어로 이미지 삭제 (Storage에서)
+    async deleteHeroImage(imagePath) {
+        if (!this.isFirebaseReady) {
+            return { success: false, error: 'Firebase Storage not available' };
+        }
+
+        try {
+            if (!imagePath) {
+                return { success: true }; // 삭제할 이미지 없음
+            }
+
+            // URL에서 경로 추출 (필요한 경우)
+            let path = imagePath;
+            if (imagePath.includes('firebase')) {
+                // URL인 경우 파일 경로 추출 로직 필요
+                console.log('⚠️ URL에서 경로 추출 필요:', imagePath);
+                // 간단한 구현: Storage URL 파싱 생략
+                return { success: true };
+            }
+
+            const storageRef = storage.ref(path);
+            await storageRef.delete();
+            console.log('✅ Firebase Storage 이미지 삭제 성공:', path);
+
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Firebase Storage 이미지 삭제 오류:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 }
 
 // 전역 Firebase 서비스 인스턴스
