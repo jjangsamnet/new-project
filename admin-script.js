@@ -1852,9 +1852,20 @@ class AdminSystem {
         if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
             try {
                 console.log('☁️ Firebase Storage에 업로드 중...');
-                showLoading();
+                console.log('firebaseService 존재:', typeof firebaseService);
+                console.log('uploadHeroImage 함수 존재:', typeof firebaseService.uploadHeroImage);
+                console.log('storage 객체 존재:', typeof storage);
+
+                if (typeof showLoading !== 'undefined') {
+                    showLoading();
+                }
 
                 const uploadResult = await firebaseService.uploadHeroImage(file);
+                console.log('📥 업로드 결과:', uploadResult);
+
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
 
                 if (uploadResult.success) {
                     console.log('✅ Firebase Storage 업로드 성공:', uploadResult.url);
@@ -1863,17 +1874,21 @@ class AdminSystem {
                     previewContainer.style.display = 'block';
                     hiddenInput.value = uploadResult.url;
 
-                    hideLoading();
                     alert('이미지가 성공적으로 업로드되었습니다.');
                     return;
                 } else {
                     console.warn('⚠️ Firebase Storage 업로드 실패, Base64로 폴백:', uploadResult.error);
+                    alert('Firebase Storage 업로드 실패. Base64 방식으로 저장합니다.\n오류: ' + uploadResult.error);
                 }
-
-                hideLoading();
             } catch (error) {
                 console.error('❌ Firebase Storage 업로드 오류:', error);
-                hideLoading();
+                console.error('오류 상세:', error.message, error.stack);
+
+                if (typeof hideLoading !== 'undefined') {
+                    hideLoading();
+                }
+
+                alert('Firebase Storage 업로드 중 오류가 발생했습니다.\nBase64 방식으로 저장합니다.\n\n오류: ' + error.message);
             }
         }
 
