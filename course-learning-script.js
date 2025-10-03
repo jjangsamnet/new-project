@@ -750,14 +750,18 @@ element.classList.toggle('toggle-class');</code></pre>
                     e.courseId === this.currentCourse.id
                 );
 
-                if (enrollment && enrollment.progress !== progressPercent) {
-                    enrollment.progress = progressPercent;
-                    enrollment.lastAccessedAt = new Date().toISOString();
-                    await firebaseService.saveEnrollment(enrollment);
-                    console.log('✅ Firebase 진도율 실시간 동기화:', progressPercent, '%');
+                if (enrollment && enrollment.firebaseId) {
+                    // 진도율이 변경되었을 때만 업데이트
+                    if (enrollment.progress !== progressPercent) {
+                        await firebaseService.updateEnrollmentProgress(enrollment.firebaseId, progressPercent);
+                        console.log('✅ Firebase 진도율 실시간 동기화:', progressPercent, '%');
+                    }
+                } else {
+                    console.warn('⚠️ Firebase enrollment 찾을 수 없음 또는 firebaseId 없음');
                 }
             } catch (error) {
                 console.warn('⚠️ Firebase 진도율 동기화 실패:', error);
+                console.error('오류 상세:', error);
             }
         }
     }
