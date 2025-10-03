@@ -128,16 +128,11 @@ class AdminSystem {
         // 운영 환경에서는 Firebase Authentication + Firestore Security Rules 필수
 
         // 환경 설정 파일에서 로드 (admin-config.local.js)
+        // Firebase 모드에서도 폴백 인증으로 사용 가능
         if (typeof window.ADMIN_CONFIG !== 'undefined') {
-            console.log('✅ 관리자 설정 파일 로드됨 (localStorage 모드)');
-            console.warn('⚠️ 보안 경고: localStorage 모드는 개발 환경 전용입니다.');
+            console.log('✅ 관리자 설정 파일 로드됨 (폴백 인증 가능)');
+            console.warn('⚠️ 보안 경고: 클라이언트 측 인증은 개발 환경 전용입니다.');
             return window.ADMIN_CONFIG;
-        }
-
-        // Firebase 모드에서는 자격증명 필요 없음
-        if (this.isFirebaseReady) {
-            console.log('✅ Firebase Authentication 모드 (안전)');
-            return null; // Firebase 모드에서는 불필요
         }
 
         // 설정 파일 없음
