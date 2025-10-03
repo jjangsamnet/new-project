@@ -426,28 +426,9 @@ element.classList.toggle('toggle-class');</code></pre>
             const calculatedProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
             const overallProgress = Math.min(100, Math.max(0, calculatedProgress));
 
-            console.log(`📊 진도율 업데이트: ${completedLessons}/${totalLessons} = ${overallProgress}%`);
+            console.log(`📊 진도율 로컬 저장: ${completedLessons}/${totalLessons} = ${overallProgress}%`);
 
-            // Firebase enrollment에 진도율 업데이트
-            if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
-                try {
-                    const enrollments = await firebaseService.getEnrollments();
-                    const enrollment = enrollments.find(e =>
-                        e.userId === this.currentUser.id &&
-                        e.courseId === this.currentCourse.id
-                    );
-
-                    if (enrollment) {
-                        // 진도율을 0-100% 범위로 제한
-                        enrollment.progress = Math.min(100, Math.max(0, overallProgress));
-                        enrollment.lastAccessedAt = new Date().toISOString();
-                        const result = await firebaseService.saveEnrollment(enrollment);
-                        console.log('✅ Firebase enrollment 진도율 업데이트:', overallProgress, '%');
-                    }
-                } catch (error) {
-                    console.error('Firebase 진도율 업데이트 오류:', error);
-                }
-            }
+            // 참고: Firebase 동기화는 updateOverallProgress()에서 처리됨
         } catch (error) {
             console.error('진행률 저장 오류:', error);
         }
@@ -747,7 +728,7 @@ element.classList.toggle('toggle-class');</code></pre>
         document.getElementById('completion-modal').style.display = 'none';
     }
 
-    updateOverallProgress() {
+    async updateOverallProgress() {
         const completedLessons = this.lessons.filter(lesson =>
             this.progress[lesson.id]?.completed
         ).length;
@@ -756,8 +737,29 @@ element.classList.toggle('toggle-class');</code></pre>
         // 진도율을 0-100% 범위로 제한
         const progressPercent = Math.min(100, Math.max(0, calculatedProgress));
 
+        // UI 업데이트
         document.getElementById('overall-progress').textContent = progressPercent + '%';
         document.getElementById('overall-progress-bar').style.width = progressPercent + '%';
+
+        // Firebase enrollment에도 진도율 업데이트 (실시간 동기화)
+        if (this.isFirebaseReady && typeof firebaseService !== 'undefined') {
+            try {
+                const enrollments = await firebaseService.getEnrollments();
+                const enrollment = enrollments.find(e =>
+                    e.userId === this.currentUser.id &&
+                    e.courseId === this.currentCourse.id
+                );
+
+                if (enrollment && enrollment.progress !== progressPercent) {
+                    enrollment.progress = progressPercent;
+                    enrollment.lastAccessedAt = new Date().toISOString();
+                    await firebaseService.saveEnrollment(enrollment);
+                    console.log('✅ Firebase 진도율 실시간 동기화:', progressPercent, '%');
+                }
+            } catch (error) {
+                console.warn('⚠️ Firebase 진도율 동기화 실패:', error);
+            }
+        }
     }
 
     // 컨트롤 함수들
