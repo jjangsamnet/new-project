@@ -859,7 +859,21 @@ class AdminSystem {
         const tbody = document.getElementById('enrollments-table-body');
         if (!tbody) return;
 
-        tbody.innerHTML = this.enrollments.map(enrollment => {
+        // 중복 제거: userId와 courseId 조합으로 유니크하게 필터링
+        const uniqueEnrollments = [];
+        const seen = new Set();
+
+        this.enrollments.forEach(enrollment => {
+            const key = `${enrollment.userId}-${enrollment.courseId}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueEnrollments.push(enrollment);
+            }
+        });
+
+        console.log(`📊 수강신청 중복 제거: ${this.enrollments.length}개 → ${uniqueEnrollments.length}개`);
+
+        tbody.innerHTML = uniqueEnrollments.map(enrollment => {
             const user = this.users.find(u => u.id === enrollment.userId);
             const course = this.courses.find(c => c.id === enrollment.courseId);
             const progress = enrollment.progress || 0;
@@ -888,8 +902,22 @@ class AdminSystem {
 
     // 이수자 명단 로드
     loadCompletions() {
-        // 진도율 90% 이상인 수강신청만 필터링
-        this.completions = this.enrollments.filter(e => (e.progress || 0) >= 90);
+        // 중복 제거: userId와 courseId 조합으로 유니크하게 필터링
+        const uniqueEnrollments = [];
+        const seen = new Set();
+
+        this.enrollments.forEach(enrollment => {
+            const key = `${enrollment.userId}-${enrollment.courseId}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueEnrollments.push(enrollment);
+            }
+        });
+
+        // 진도율 90% 이상인 수강신청만 필터링 (중복 제거된 데이터에서)
+        this.completions = uniqueEnrollments.filter(e => (e.progress || 0) >= 90);
+
+        console.log(`📊 이수자 중복 제거: ${this.enrollments.filter(e => (e.progress || 0) >= 90).length}개 → ${this.completions.length}개`);
 
         // 월 필터 드롭다운 생성
         this.populateMonthFilter();
