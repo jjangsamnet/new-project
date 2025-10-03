@@ -1808,11 +1808,22 @@ class AdminSystem {
 
     // 히어로 이미지 업로드 처리
     handleHeroImageUpload(event) {
+        console.log('📸 이미지 업로드 시작...');
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+            console.log('❌ 파일이 선택되지 않음');
+            return;
+        }
+
+        console.log('📁 파일 정보:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
 
         // 파일 크기 체크 (5MB)
         if (file.size > 5 * 1024 * 1024) {
+            console.warn('❌ 파일 크기 초과:', file.size);
             alert('이미지 파일 크기는 5MB 이하여야 합니다.');
             event.target.value = '';
             return;
@@ -1820,23 +1831,42 @@ class AdminSystem {
 
         // 이미지 파일 체크
         if (!file.type.startsWith('image/')) {
+            console.warn('❌ 이미지 파일이 아님:', file.type);
             alert('이미지 파일만 업로드 가능합니다.');
             event.target.value = '';
             return;
         }
 
+        console.log('✅ 파일 검증 통과, Base64 인코딩 시작...');
+
         const reader = new FileReader();
         reader.onload = (e) => {
+            console.log('✅ FileReader 로드 완료');
             const preview = document.getElementById('hero-image-preview');
             const previewContainer = document.getElementById('hero-image-preview-container');
             const hiddenInput = document.getElementById('hero-image-url');
+
+            if (!preview || !previewContainer || !hiddenInput) {
+                console.error('❌ DOM 요소를 찾을 수 없음:', {
+                    preview: !!preview,
+                    previewContainer: !!previewContainer,
+                    hiddenInput: !!hiddenInput
+                });
+                return;
+            }
 
             preview.src = e.target.result;
             previewContainer.style.display = 'block';
             hiddenInput.value = e.target.result; // Base64 저장
 
-            console.log('✅ 히어로 이미지 업로드 완료');
+            console.log('✅ 히어로 이미지 업로드 완료, Base64 길이:', e.target.result.length);
         };
+
+        reader.onerror = (error) => {
+            console.error('❌ FileReader 오류:', error);
+            alert('이미지 읽기 중 오류가 발생했습니다.');
+        };
+
         reader.readAsDataURL(file);
     }
 
@@ -2288,6 +2318,14 @@ function exportUsers() {
 
 function exportEnrollments() {
     admin.exportEnrollments();
+}
+
+function handleHeroImageUpload(event) {
+    admin.handleHeroImageUpload(event);
+}
+
+function removeHeroImage() {
+    admin.removeHeroImage();
 }
 
 function goToMainSite() {
