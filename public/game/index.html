@@ -561,7 +561,7 @@ function sceneSelect(){
 /* ========================================================= */
 function sceneIntro(){
   const nm=CHARS[state.char].nm;
-  showComic({ title:'🌄 남매의 하늘 길 〈1화〉',
+  const page1 = { title:'🌄 남매의 하늘 길 〈1화〉',
     panels:[
       {sfx:'끙차~ ♪', say:'오늘 떡값 두둑하게 챙겼당!',
        scene:`<span class="lg">⛰️</span>${actor('mom','happy',{})}<span class="sm">🍡</span>`,
@@ -574,7 +574,23 @@ function sceneIntro(){
       {say:'엄마 왜 안 오시지…?', say2:'걱정 마! 이 몸 도토리가 있잖아!',
        scene:`${pc('flat',{sm:true})}${actor('squirrel','laugh',{wob:true})}`,
        narr:`집에서 기다리던 ${nm}과 입만 산 단짝 다람쥐 '도토리'.`}
-    ]}, sceneQ1);
+    ]};
+  const page2 = { title:'🐯 욕심쟁이 호랑이 〈1화 ②〉',
+    panels:[
+      {sfx:'와구와구!', say:'떡 하나만? 에이~ 그냥 다 먹지!', say2:'그건 우리 애들 거라구요!!',
+       scene:`${actor('tiger','laugh',{wob:true})}<span class="sm">🍡</span>${actor('mom','shock',{sm:true})}`,
+       narr:'호랑이가 떡을 한 입에 꿀꺽! 둘도 없는 욕심쟁이예요.'},
+      {sfx:'번쩍! 💡', say:'후식으로… 더 맛난 거 없나~?', say2:'(집에 애들이 있댔지? 흐흐)', think2:true,
+       scene:`${actor('tiger','smug',{wob:true})}`,
+       narr:'배부른 호랑이가 그만 못된 꾀를 떠올렸어요.'},
+      {sfx:'다다다닥!', say:'얘들아~ 절대 문 열지 마!!', say2:'아주머니 다리가… 안 보여요?!',
+       scene:`${actor('mom','determined',{wob:true})}${actor('squirrel','shock',{sm:true})}`,
+       narr:'어머니가 바람처럼 집으로 달려가요. (다리에 모터 달림)'},
+      {sfx:'두근두근…', say:'무서워도 똑똑하게 헤쳐 나가자!', say2:'무, 물론이지! …근데 왜 내 다리가 후들후들?',
+       scene:`${pc('determined',{sm:true})}${actor('squirrel','dizzy',{wob:true})}`,
+       narr:'이제 남매의 진짜 모험 시작! 힘의 비밀을 풀어 호랑이를 따돌려요.'}
+    ]};
+  showComic(page1, ()=> showComic(page2, sceneQ1));
 }
 
 /* ========================================================= */
