@@ -70,10 +70,13 @@
           min-height:198px;display:flex;flex-direction:column;align-items:center;
           padding:9px 8px 0;overflow:hidden;}
   .cpanel.wide{grid-column:1 / -1;min-height:158px;}
+  /* 그려진 배경 풍경 레이어 */
+  .cbg{position:absolute;inset:0;z-index:0;}
+  .cbg .bgsvg{width:100%;height:100%;display:block;}
   /* 말풍선 영역(위) — 얼굴을 절대 가리지 않음 */
-  .cbubblezone{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:38px;z-index:3;}
+  .cbubblezone{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:38px;z-index:3;}
   /* 캐릭터 영역(아래) */
-  .cscene{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;
+  .cscene{position:relative;z-index:2;flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;
           font-size:50px;line-height:1;padding-bottom:4px;}
   .cscene .lg{font-size:62px;} .cscene .sm{font-size:30px;}
   .wob{animation:wob 1.4s ease-in-out infinite;transform-origin:50% 92%;}
@@ -90,8 +93,8 @@
   .cbubble b{color:#e0581a;}
   .cbubble.think{border-style:dashed;}
   .csfx{position:absolute;top:42px;right:8px;font-family:'Gaegu',inherit;font-weight:700;color:#e0581a;
-        font-size:23px;transform:rotate(-11deg);z-index:2;text-shadow:1.5px 1.5px 0 #fff,-1px -1px 0 #fff;}
-  .cnarr{width:calc(100% + 16px);margin:6px -8px 0;background:rgba(43,36,64,.88);color:#fff;
+        font-size:23px;transform:rotate(-11deg);z-index:4;text-shadow:1.5px 1.5px 0 #fff,-1px -1px 0 #fff;}
+  .cnarr{position:relative;z-index:3;width:calc(100% + 16px);margin:6px -8px 0;background:rgba(43,36,64,.88);color:#fff;
          font-size:13px;font-weight:700;padding:5px 8px;text-align:center;font-family:'Gaegu',inherit;}
   /* 아이템 장착 연출 */
   .equipwrap{position:relative;display:flex;justify-content:center;align-items:flex-end;height:175px;margin:6px 0;}
@@ -372,6 +375,50 @@ function actor(type, face, opts){
 /* 현재 주인공 액터 (장비 반영) */
 function pc(face, opts){ opts=opts||{}; const c=CHARS[state.char]; return actor(c.atype, face, {gear:state.gear, color:c.acolor, sm:opts.sm, wob:opts.wob}); }
 
+/* ---------- 만화 배경 풍경(SVG) ---------- */
+function bgSVG(type){
+  const sky=(c)=>`<rect width="320" height="200" fill="${c}"/>`;
+  const cloud=(x,y,s)=>`<g transform="translate(${x},${y}) scale(${s})"><ellipse cx="0" cy="0" rx="26" ry="14" fill="#fff"/><ellipse cx="20" cy="4" rx="20" ry="11" fill="#fff"/><ellipse cx="-20" cy="4" rx="18" ry="10" fill="#fff"/></g>`;
+  const pine=(x,y,s)=>`<g transform="translate(${x},${y}) scale(${s})"><rect x="-4" y="0" width="8" height="16" fill="#8a5a2b"/><path d="M0 -44 L18 -8 H-18 Z" fill="#3f8f4f"/><path d="M0 -30 L22 6 H-22 Z" fill="#4ea35d"/></g>`;
+  const sun=(x,y)=>`<g><circle cx="${x}" cy="${y}" r="22" fill="#ffd23f"/>${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;return `<line x1="${x+Math.cos(r)*26}" y1="${y+Math.sin(r)*26}" x2="${x+Math.cos(r)*34}" y2="${y+Math.sin(r)*34}" stroke="#ffd23f" stroke-width="3" stroke-linecap="round"/>`}).join('')}</g>`;
+  let s='';
+  switch(type){
+    case 'hill':
+      s=sky('#bfe4ff')+`<rect y="120" width="320" height="80" fill="#cdeeb0"/>`+sun(280,40)+cloud(70,46,1)+cloud(180,30,.8)
+        +`<path d="M0 150 Q90 100 180 140 T320 130 V200 H0 Z" fill="#8fce7e"/>`
+        +`<path d="M0 200 Q120 150 320 180 V200 Z" fill="#79bd68"/>`
+        +`<path d="M120 200 Q150 150 175 200 Z" fill="#caa46a"/>`+pine(40,150,1.1)+pine(300,160,.9); break;
+    case 'forest':
+      s=sky('#bfe6cf')+`<rect y="130" width="320" height="70" fill="#a9dc8f"/>`+cloud(90,40,.8)
+        +`<path d="M0 140 Q80 100 160 135 T320 125 V200 H0 Z" fill="#7cbf6d"/>`
+        +pine(40,150,1.4)+pine(110,165,1.1)+pine(210,160,1.3)+pine(285,150,1.5); break;
+    case 'home_out':
+      s=sky('#cfeaff')+`<rect y="135" width="320" height="65" fill="#d8c89a"/>`+sun(40,40)+cloud(180,40,.9)
+        +`<rect x="115" y="92" width="115" height="56" fill="#e8d3a0" stroke="#3a2b22" stroke-width="2"/>`
+        +`<path d="M104 92 Q172 58 240 92 Z" fill="#7a4a36" stroke="#3a2b22" stroke-width="2"/>`
+        +`<rect x="158" y="112" width="30" height="36" fill="#9a6b3e" stroke="#3a2b22" stroke-width="2"/>`; break;
+    case 'indoor':
+      s=sky('#ffe6c2')+`<rect y="140" width="320" height="60" fill="#d6a866"/>`
+        +`<rect x="40" y="38" width="84" height="72" fill="#bfe2ff" stroke="#7a5a3a" stroke-width="4"/>`
+        +`<line x1="82" y1="38" x2="82" y2="110" stroke="#7a5a3a" stroke-width="3"/><line x1="40" y1="74" x2="124" y2="74" stroke="#7a5a3a" stroke-width="3"/>`
+        +`<line x1="0" y1="140" x2="320" y2="140" stroke="#a9772f" stroke-width="2"/>`; break;
+    case 'sky':
+      s=sky('#9fd2ff')+sun(270,45)+cloud(60,60,1.2)+cloud(150,120,1)+cloud(230,150,1.1)+cloud(120,40,.7); break;
+    case 'night':
+      s=sky('#27406e')+`<g fill="#fff">${[[30,30],[80,60],[140,25],[210,50],[270,35],[300,90],[50,110],[180,100]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2"/>`).join('')}</g>`
+        +`<path d="M270 40 a20 20 0 1 0 6 30 a16 16 0 1 1 -6 -30z" fill="#ffe9a8"/>`+cloud(90,140,1)+cloud(220,160,.9); break;
+    case 'field':
+      s=sky('#cfeaff')+`<rect y="120" width="320" height="80" fill="#e6cf8a"/>`+sun(40,40)
+        +[20,60,100,140,180,220,260,300].map(x=>`<g><line x1="${x}" y1="200" x2="${x}" y2="108" stroke="#caa24a" stroke-width="4"/><path d="M${x} 108 q8 -10 2 -22 M${x} 108 q-8 -10 -2 -22" stroke="#b9923f" stroke-width="3" fill="none"/></g>`).join(''); break;
+    case 'sunmoon':
+      s=sky('#7fb6ff')+sun(60,50)+`<circle cx="260" cy="55" r="22" fill="#fff3c4"/>`
+        +`<g fill="#fff">${[[120,30],[180,40],[210,90],[100,80]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2"/>`).join('')}</g>`
+        +`<path d="M-20 200 A 220 120 0 0 1 340 200 Z" fill="#5aa0e0"/>`+`<path d="M-20 200 A 220 90 0 0 1 340 200 Z" fill="#6fc06a"/>`; break;
+    default: s=sky('#dff0ff');
+  }
+  return `<svg class="bgsvg" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">${s}</svg>`;
+}
+
 /* ---------- HUD ---------- */
 function hud(){
   document.getElementById('hudChar').textContent = state.char ? CHARS[state.char].face+' '+CHARS[state.char].nm : '🙂 주인공';
@@ -489,6 +536,7 @@ function showComic(page, onDone){
     if(p.say)  bubbles += `<div class="cbubble${p.think?' think':''}">${p.say}</div>`;
     if(p.say2) bubbles += `<div class="cbubble${p.think2?' think':''}">${p.say2}</div>`;
     cells += `<div class="${cls}">
+      <div class="cbg">${p.bg?bgSVG(p.bg):''}</div>
       ${p.sfx?`<span class="csfx">${p.sfx}</span>`:''}
       <div class="cbubblezone">${bubbles}</div>
       <div class="cscene">${p.scene||''}</div>
@@ -563,30 +611,30 @@ function sceneIntro(){
   const nm=CHARS[state.char].nm;
   const page1 = { title:'🌄 남매의 하늘 길 〈1화〉',
     panels:[
-      {sfx:'끙차~ ♪', say:'오늘 떡값 두둑하게 챙겼당!',
-       scene:`<span class="lg">⛰️</span>${actor('mom','happy',{})}<span class="sm">🍡</span>`,
+      {bg:'hill', sfx:'끙차~ ♪', say:'오늘 떡값 두둑하게 챙겼당!',
+       scene:`${actor('mom','happy',{})}<span class="sm">🍡</span>`,
        narr:'잔칫집 일 마친 어머니, 콧노래 부르며 고개를 넘는 중.'},
-      {sfx:'어흥!!', say:'떡 하나 주면 안 잡아먹지!',
+      {bg:'forest', sfx:'어흥!!', say:'떡 하나 주면 안 잡아먹지!',
        scene:`${actor('mom','shock',{sm:true})}${actor('tiger','smug',{wob:true})}`},
-      {say:'요즘 떡값이 얼만데요!', say2:'어… 그, 그럼 두 개?',
+      {bg:'forest', say:'요즘 떡값이 얼만데요!', say2:'어… 그, 그럼 두 개?',
        scene:`${actor('tiger','sweat',{sm:true})}${actor('mom','determined',{sm:true})}`,
        narr:'협상의 고수 어머니. 호랑이가 더 당황한다.'},
-      {say:'엄마 왜 안 오시지…?', say2:'걱정 마! 이 몸 도토리가 있잖아!',
+      {bg:'indoor', say:'엄마 왜 안 오시지…?', say2:'걱정 마! 이 몸 도토리가 있잖아!',
        scene:`${pc('flat',{sm:true})}${actor('squirrel','laugh',{wob:true})}`,
        narr:`집에서 기다리던 ${nm}과 입만 산 단짝 다람쥐 '도토리'.`}
     ]};
   const page2 = { title:'🐯 욕심쟁이 호랑이 〈1화 ②〉',
     panels:[
-      {sfx:'와구와구!', say:'떡 하나만? 에이~ 그냥 다 먹지!', say2:'그건 우리 애들 거라구요!!',
+      {bg:'forest', sfx:'와구와구!', say:'떡 하나만? 에이~ 그냥 다 먹지!', say2:'그건 우리 애들 거라구요!!',
        scene:`${actor('tiger','laugh',{wob:true})}<span class="sm">🍡</span>${actor('mom','shock',{sm:true})}`,
        narr:'호랑이가 떡을 한 입에 꿀꺽! 둘도 없는 욕심쟁이예요.'},
-      {sfx:'번쩍! 💡', say:'후식으로… 더 맛난 거 없나~?', say2:'(집에 애들이 있댔지? 흐흐)', think2:true,
+      {bg:'forest', sfx:'번쩍! 💡', say:'후식으로… 더 맛난 거 없나~?', say2:'(집에 애들이 있댔지? 흐흐)', think2:true,
        scene:`${actor('tiger','smug',{wob:true})}`,
        narr:'배부른 호랑이가 그만 못된 꾀를 떠올렸어요.'},
-      {sfx:'다다다닥!', say:'얘들아~ 절대 문 열지 마!!', say2:'아주머니 다리가… 안 보여요?!',
+      {bg:'home_out', sfx:'다다다닥!', say:'얘들아~ 절대 문 열지 마!!', say2:'아주머니 다리가… 안 보여요?!',
        scene:`${actor('mom','determined',{wob:true})}${actor('squirrel','shock',{sm:true})}`,
        narr:'어머니가 바람처럼 집으로 달려가요. (다리에 모터 달림)'},
-      {sfx:'두근두근…', say:'무서워도 똑똑하게 헤쳐 나가자!', say2:'무, 물론이지! …근데 왜 내 다리가 후들후들?',
+      {bg:'indoor', sfx:'두근두근…', say:'무서워도 똑똑하게 헤쳐 나가자!', say2:'무, 물론이지! …근데 왜 내 다리가 후들후들?',
        scene:`${pc('determined',{sm:true})}${actor('squirrel','dizzy',{wob:true})}`,
        narr:'이제 남매의 진짜 모험 시작! 힘의 비밀을 풀어 호랑이를 따돌려요.'}
     ]};
@@ -631,13 +679,13 @@ function sceneQ1(){
       addScore(120);
       praise(()=> showComic({ title:'⛰️ 가벼운 떡을 골라라 〈2화〉',
         panels:[
-          {sfx:'영차!', say:'이게 제일 가볍네!',
+          {bg:'hill', sfx:'영차!', say:'이게 제일 가볍네!',
            scene:`${pc('determined',{sm:true})}<span class="sm">🎁</span>`,
            narr:'무거울수록 용수철이 쭉~ 늘어난다는 걸 알았다.'},
-          {sfx:'꿀꺽…', say:'근데 그거… 먹는 거 아냐?',
+          {bg:'hill', sfx:'꿀꺽…', say:'근데 그거… 먹는 거 아냐?',
            scene:`${actor('squirrel','sparkle',{wob:true})}<span class="lg">🎁</span>`,
            narr:'도토리는 벌써 떡에 군침. (또 먹는 생각.)'},
-          {wide:true, say:'얘들아 고마워~ 무사히 넘었네!', say2:'…제 몫의 떡은요?',
+          {bg:'hill', wide:true, say:'얘들아 고마워~ 무사히 넘었네!', say2:'…제 몫의 떡은요?',
            scene:`${actor('mom','laugh',{sm:true})}${pc('happy',{sm:true})}${actor('squirrel','flat',{sm:true})}`,
            narr:'1단계 성공! 발걸음이 가뿐.'}
         ]}, ()=>levelUp(1,'🎒','등짐 가방을 얻었다!', sceneLeverStory)));
@@ -655,13 +703,13 @@ function sceneQ1(){
 function sceneToQ2(){
   showComic({ title:'🐯 끈질긴 호랑이 〈4화〉',
     panels:[
-      {sfx:'쾅쾅!!', say:'문 열어라~ 이번엔 너희 차례!',
-       scene:`<span class="lg">🏠</span>${actor('tiger','smug',{wob:true})}`},
-      {say:'헉! 도망쳐야 해!', say2:'근데 여기 막다른 집인데?!',
+      {bg:'home_out', sfx:'쾅쾅!!', say:'문 열어라~ 이번엔 너희 차례!',
+       scene:`${actor('tiger','smug',{wob:true})}`},
+      {bg:'indoor', say:'헉! 도망쳐야 해!', say2:'근데 여기 막다른 집인데?!',
        scene:`${pc('shock',{sm:true})}${actor('squirrel','dizzy',{sm:true})}`},
-      {sfx:'스르륵✨', say:'하늘에서 동아줄이?!',
-       scene:'<span class="lg">☁️</span><span class="lg wob">🪢</span>', narr:'하늘이 튼튼한 동아줄을 내려줬다.'},
-      {say:'줄을 당기면 위로 가겠지!', say2:'난 그냥 매달릴래~',
+      {bg:'sky', sfx:'스르륵✨', say:'하늘에서 동아줄이?!',
+       scene:'<span class="lg wob">🪢</span>', narr:'하늘이 튼튼한 동아줄을 내려줬다.'},
+      {bg:'sky', say:'줄을 당기면 위로 가겠지!', say2:'난 그냥 매달릴래~',
        scene:`${pc('determined',{sm:true})}<span class="lg">🪢</span>${actor('squirrel','laugh',{sm:true,wob:true})}`,
        narr:'당기는 힘으로 탈출 작전 시작!'}
     ]}, sceneQ2);
@@ -697,11 +745,11 @@ function sceneQ2(){
     addScore(140);
     praise(()=> showComic({ title:'🪢 하늘로, 영차! 〈5화〉',
       panels:[
-        {sfx:'영차!', say:'당길수록 몸이 쑥쑥!',
-         scene:`<span class="lg">☁️</span>${pc('determined',{sm:true})}`},
-        {sfx:'슝~!', say:'나도 가!! 안 떨어질래!',
+        {bg:'sky', sfx:'영차!', say:'당길수록 몸이 쑥쑥!',
+         scene:`${pc('determined',{sm:true})}<span class="lg">🪢</span>`},
+        {bg:'sky', sfx:'슝~!', say:'나도 가!! 안 떨어질래!',
          scene:`${actor('squirrel','shock',{wob:true})}<span class="lg">🪢</span>`, narr:'도토리, 줄에 매달려 무임승차.'},
-        {wide:true, say:'아래로 당기면 위로! 이게 당기는 힘이구나!',
+        {bg:'sky', wide:true, say:'아래로 당기면 위로! 이게 당기는 힘이구나!',
          scene:`<span class="lg">🌈</span>${pc('laugh',{sm:true})}`, narr:'2단계 성공!'}
       ]}, ()=>levelUp(3,'🪢✨','빛나는 동아줄을 얻었다!', sceneToQ3)));
   }
@@ -712,11 +760,11 @@ function sceneQ2(){
 function sceneToQ3(){
   showComic({ title:'🐯 호랑이의 부탁 〈6화〉',
     panels:[
-      {sfx:'낑낑~', say:'나도! 나도 줄 내려줘!',
+      {bg:'forest', sfx:'낑낑~', say:'나도! 나도 줄 내려줘!',
        scene:`${actor('tiger','cry',{wob:true})}`},
-      {say:'하늘님~ 튼튼한 걸로!', say2:'…나 좀 많이 무겁거든',
+      {bg:'forest', say:'하늘님~ 튼튼한 걸로!', say2:'…나 좀 많이 무겁거든',
        scene:`${actor('tiger','sweat',{})}`, narr:'호랑이도 자기가 무거운 건 안다.'},
-      {wide:true, say:'무거운 호랑이엔 어떤 줄이 좋을까?', say2:'(흐흐, 작전 개시!)', think2:true,
+      {bg:'sky', wide:true, say:'무거운 호랑이엔 어떤 줄이 좋을까?', say2:'(흐흐, 작전 개시!)', think2:true,
        scene:`${pc('smug',{sm:true})}${actor('squirrel','wink',{sm:true,wob:true})}`,
        narr:'무게를 잘 떠올려 보자!'}
     ]}, sceneQ3);
@@ -774,11 +822,11 @@ function sceneQ3(){
         addScore(150);
         praise(()=> showComic({ title:'🌾 위기 탈출! 〈7화〉',
           panels:[
-            {sfx:'삐그덕…', say:'어? 줄이 왜 늘어나…',
+            {bg:'sky', sfx:'삐그덕…', say:'어? 줄이 왜 늘어나…',
              scene:`${actor('tiger','sweat',{wob:true})}<span>🪢</span>`, narr:'무거울수록 줄에 큰 힘이 걸린다.'},
-            {sfx:'뚝— 으악!', say:'내 그럴 줄 알았다능…',
+            {bg:'field', sfx:'뚝— 으악!', say:'내 그럴 줄 알았다능…',
              scene:`${actor('tiger','dizzy',{wob:true})}<span class="sm">💨</span>`, narr:'줄이 끊겨 수숫대밭으로 쿵! (중력!)'},
-            {wide:true, say:'휴~ 살았다!', say2:'거봐, 내 작전대로지?',
+            {bg:'sky', wide:true, say:'휴~ 살았다!', say2:'거봐, 내 작전대로지?',
              scene:`${pc('laugh',{sm:true})}${actor('squirrel','smug',{sm:true,wob:true})}`, narr:'3단계 성공!'}
           ]}, ()=>levelUp(4,'🛡️','중력의 수호자가 되었다!', sceneBalanceStory)));
       }
@@ -791,12 +839,12 @@ function sceneQ3(){
 function sceneLeverStory(){
   showComic({ title:'🪨 길을 막은 바위 〈3화〉',
     panels:[
-      {sfx:'쿵!', say:'고개 넘자마자 큰 바위가 길을 막았어!',
+      {bg:'hill', sfx:'쿵!', say:'고개 넘자마자 큰 바위가 길을 막았어!',
        scene:`<span class="lg">🪨</span>${pc('shock',{sm:true})}`},
-      {say:'밀어도 꿈쩍 안 해…', say2:'힘으로 안 되면 머리를 써!',
+      {bg:'hill', say:'밀어도 꿈쩍 안 해…', say2:'힘으로 안 되면 머리를 써!',
        scene:`${pc('sweat',{sm:true})}${actor('squirrel','smug',{sm:true,wob:true})}`,
        narr:'도토리가 어디선가 막대를 주워 온다.'},
-      {wide:true, say:'막대 + 받침돌 = 지렛대 완성!', say2:'받침점만 잘 놓으면 끝!',
+      {bg:'hill', wide:true, say:'막대 + 받침돌 = 지렛대 완성!', say2:'받침점만 잘 놓으면 끝!',
        scene:`${actor('squirrel','laugh',{sm:true})}<span>🪵</span><span class="sm">🪨</span>`,
        narr:'받침점을 어디에 둘지 골라 바위를 들어보자!'}
     ]}, sceneLever);
@@ -848,9 +896,9 @@ function sceneLever(){
 function sceneBalanceStory(){
   showComic({ title:'⚖️ 흔들 시소 다리 〈8화〉',
     panels:[
-      {sfx:'삐걱삐걱', say:'다리가 한쪽으로 기울었어!',
+      {bg:'forest', sfx:'삐걱삐걱', say:'다리가 한쪽으로 기울었어!',
        scene:`<span class="lg">🌉</span>${pc('shock',{sm:true})}`},
-      {say:'양쪽 무게를 똑같이 하면 평평해져!', say2:'그게 수평 잡기지!',
+      {bg:'forest', say:'양쪽 무게를 똑같이 하면 평평해져!', say2:'그게 수평 잡기지!',
        scene:`${actor('squirrel','wink',{sm:true,wob:true})}${pc('determined',{sm:true})}`,
        narr:'양팔저울로 떡 무게를 똑같이 맞춰 다리를 건너자!'}
     ]}, sceneBalance);
@@ -887,11 +935,11 @@ function sceneBalance(){
 function sceneToBoss(){
   showComic({ title:'⭐ 마지막 하늘 길 〈9화〉',
     panels:[
-      {say:'끝까지 오르면 해와 달이 된대!',
-       scene:`<span class="lg">🌤️</span>${pc('sparkle',{sm:true})}`},
-      {sfx:'우르르!', say:'으악, 위에서 막 떨어져!',
+      {bg:'sky', say:'끝까지 오르면 해와 달이 된대!',
+       scene:`${pc('sparkle',{sm:true})}`},
+      {bg:'night', sfx:'우르르!', say:'으악, 위에서 막 떨어져!',
        scene:'<span class="sm">🪨</span><span class="sm wob">🌰</span><span class="sm">🍎</span>', narr:'돌과 열매가 우수수… 모두 아래로(중력!).'},
-      {wide:true, say:'잘 피하면서 줄을 당기자!', say2:'응원은 내가! (또 매달림)',
+      {bg:'night', wide:true, say:'잘 피하면서 줄을 당기자!', say2:'응원은 내가! (또 매달림)',
        scene:`${pc('determined',{sm:true})}${actor('squirrel','laugh',{sm:true,wob:true})}`,
        narr:'← → 로 피하고, 당기기로 올라가요!'}
     ]}, sceneBoss);
@@ -984,14 +1032,14 @@ function sceneEnding(){
   state.gear.crown=true; state.gear.trophy=true;
   showComic({ title:'🌞🌙 해와 달이 되다 〈마지막 화〉',
     panels:[
-      {sfx:'반짝!✨', say:'드디어 하늘 끝!',
-       scene:`<span class="lg">☁️</span>${pc('sparkle',{sm:true})}`},
-      {say:`나는 ${ev}!`, say2:`나는 ${partner}!`,
+      {bg:'sky', sfx:'반짝!✨', say:'드디어 하늘 끝!',
+       scene:`${pc('sparkle',{sm:true})}`},
+      {bg:'sunmoon', say:`나는 ${ev}!`, say2:`나는 ${partner}!`,
        scene:`<span class="lg">${ev.split(' ')[0]}</span><span class="lg">${partner.split(' ')[0]}</span>`,
        narr:'한 사람은 해, 한 사람은 달이 되었어요.'},
-      {say:'그래서 낮엔 해, 밤엔 달이 비춘대요!',
-       scene:'<span class="lg">🌍</span><span>☀️</span><span>🌙</span>'},
-      {wide:true, sfx:'…저기요', say:'그래서… 제 떡은요?', say2:'아직도 그 얘기야?!',
+      {bg:'sunmoon', say:'그래서 낮엔 해, 밤엔 달이 비춘대요!',
+       scene:'<span>☀️</span><span>🌙</span>'},
+      {bg:'home_out', wide:true, sfx:'…저기요', say:'그래서… 제 떡은요?', say2:'아직도 그 얘기야?!',
        scene:`${actor('squirrel','cry',{wob:true})}${pc('laugh',{sm:true})}`,
        narr:'끝! (도토리는 끝까지 떡 생각.)'}
     ]}, ()=>{
